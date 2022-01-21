@@ -1,6 +1,8 @@
-package config
+package file
 
 import (
+	"fmt"
+	mapset "github.com/deckarep/golang-set"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -40,4 +42,14 @@ var defaultTestData = TestYaml{
 func TestLoadYaml(t *testing.T) {
 	LoadYaml("test", &defaultTestData)
 	assert.Equal(t, "GGGGG", defaultTestData.C.F.G)
+}
+
+func TestSet(t *testing.T) {
+	a := mapset.NewSet(1, 2, 3)
+	b := mapset.NewSet("a", "b", "c")
+
+	fmt.Println(a.String())
+	a = b
+	fmt.Println(a.String())
+
 }

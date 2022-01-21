@@ -1,8 +1,8 @@
-package config
+package file
 
 import (
-	"PlatformsCrawler/logging"
 	"fmt"
+	"github.com/eric2788/PlatformsCrawler/logging"
 	"gopkg.in/yaml.v2"
 	"os"
 )

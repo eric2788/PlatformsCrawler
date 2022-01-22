@@ -127,8 +127,6 @@ func crawlEach(client *redis.Client, crawling *Crawling, publisher Publisher) {
 
 		if i == 0 {
 			return
-		} else {
-			cLogger.Infof("即將追加 %d 個監控", i)
 		}
 
 		once := spec.(*OnceSpec)

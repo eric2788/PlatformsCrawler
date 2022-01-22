@@ -1,11 +1,16 @@
 package twitter
 
 import (
+	mapset "github.com/deckarep/golang-set"
 	"github.com/dghubble/go-twitter/twitter"
 	"github.com/eric2788/PlatformsCrawler/crawling"
+	"strings"
 )
 
-var key = "twitter:user_caches"
+var (
+	key      = "twitter:user_caches"
+	notFound = mapset.NewSet()
+)
 
 func UserLookUpCache(screenNames []string) (map[string]string, error) {
 
@@ -13,16 +18,38 @@ func UserLookUpCache(screenNames []string) (map[string]string, error) {
 
 	logger.Debugf("prepare to lookup users from cache: %v", screenNames)
 
-	if er, err := crawling.GetMap(key, &cache, screenNames...); err != nil {
+	if notInCaches, err := crawling.GetMap(key, &cache, screenNames...); err != nil {
 		return nil, err
-	} else if len(er) == 0 { // all names are in the cache
+	} else if len(notInCaches) == 0 { // all names are in the cache
 		return cache, nil
 	} else { // some names can't get
 
-		fetched, err := UserLookUp(er)
+		toFetch := make([]string, 0)
+
+		// 透過快取作過濾
+		for _, name := range notInCaches {
+			if notFound.Contains(name) {
+				continue
+			}
+			toFetch = append(toFetch, name)
+		}
+
+		if len(toFetch) == 0 {
+			return cache, nil
+		}
+
+		fetched, err := UserLookUp(toFetch)
 
 		if err != nil {
-			return cache, err
+			// 錯誤返回 twitter error code 17 代表 所有 toFetch 結果均為無效
+			if IsNotExistUser(err) {
+				logger.Warnf("查無這些用戶: %v", strings.Join(toFetch, ", "))
+				for _, screen := range toFetch {
+					notFound.Add(screen)
+				}
+				return cache, nil
+			}
+			return nil, err
 		}
 
 		if fetched != nil {
@@ -35,6 +62,7 @@ func UserLookUpCache(screenNames []string) (map[string]string, error) {
 			for screen, id := range fetched {
 				cache[screen] = id
 			}
+
 		}
 
 		return cache, nil
@@ -63,14 +91,24 @@ func UserLookUp(screenNames []string) (map[string]string, error) {
 	})
 
 	if err != nil {
-		logger.Error(err)
 		return nil, err
 	}
 
 	userMap := make(map[string]string)
 
+	//把得出的結果加到 set 來檢查某些沒有加到結果的 screenNames
+	nameSet := mapset.NewSet()
+
 	for _, user := range users {
 		userMap[user.ScreenName] = user.IDStr
+		nameSet.Add(user.ScreenName)
+	}
+
+	// 然後加到 notFound 中作為例外
+	for _, name := range screenNames {
+		if !nameSet.Contains(name) {
+			notFound.Add(name)
+		}
 	}
 
 	if len(altScreenNames) > 0 {
@@ -87,4 +125,9 @@ func UserLookUp(screenNames []string) (map[string]string, error) {
 	}
 
 	return userMap, nil
+}
+
+func IsNotExistUser(err error) bool {
+	twErr, ok := err.(twitter.APIError)
+	return ok && twErr.Errors[0].Code == 17
 }

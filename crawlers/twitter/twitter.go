@@ -5,6 +5,7 @@ import (
 	"github.com/eric2788/PlatformsCrawler/crawling"
 	"github.com/eric2788/PlatformsCrawler/file"
 	"github.com/eric2788/PlatformsCrawler/logging"
+	"strings"
 	"sync"
 )
 
@@ -39,6 +40,7 @@ func (c *crawler) ListenAll(room []string, publisher crawling.Publisher, done co
 	if mux == nil {
 		initMuxHandle(publisher)
 	}
+	logger.Infof("即將監控他們的推特: %v", strings.Join(room, ", "))
 	go refreshTwitterStream(room)
 	ctx, cancel := context.WithCancel(context.Background())
 	go signalForStop(ctx, done)

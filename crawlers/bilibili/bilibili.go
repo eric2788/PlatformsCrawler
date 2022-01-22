@@ -3,6 +3,7 @@ package bilibili
 import (
 	"context"
 	"github.com/eric2788/PlatformsCrawler/crawling"
+	"github.com/eric2788/PlatformsCrawler/file"
 	"github.com/eric2788/PlatformsCrawler/logging"
 	"strconv"
 	"sync"
@@ -16,6 +17,8 @@ var (
 )
 
 type crawler struct {
+	stop context.CancelFunc
+	wg   *sync.WaitGroup
 }
 
 func (c *crawler) Prefix() string {
@@ -28,26 +31,27 @@ func (c *crawler) IsValidTopic(topic string) bool {
 }
 
 func (c *crawler) Init() {
-
+	file.LoadYaml("bilibili", bilibiliYaml)
 }
 
 func (c *crawler) Start() {
+	ctx, stop := context.WithCancel(context.Background())
+	c.wg = &sync.WaitGroup{}
+	go startWebSocket(ctx, c.wg)
+	c.stop = stop
 	logger.Infof("Bilibili 爬蟲已啟動")
 }
 
-func (c *crawler) Listen(room string, publish crawling.Publisher, wg *sync.WaitGroup) context.CancelFunc {
-	logger.Infof("Listen %s", room)
+func (c *crawler) ListenAll(room []string, publisher crawling.Publisher, done context.CancelFunc) context.CancelFunc {
 	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		<-ctx.Done()
-		logger.Infof("Stop Listen %s", room)
-		wg.Done()
-	}()
+	go subscribeAll(room, ctx, done, publisher)
 	return cancel
 }
 
 func (c *crawler) Stop(wg *sync.WaitGroup) {
 	defer wg.Done()
+	c.stop()
+	c.wg.Wait()
 	logger.Infof("Bilibili 爬蟲已關閉")
 }
 

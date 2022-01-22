@@ -17,6 +17,7 @@ var (
 	stream *twitter.Stream
 )
 
+// oauth1Client user auth
 func oauth1Client() *http.Client {
 	token := oauth1.NewToken(twitterYaml.AccessToken, twitterYaml.AccessTokenSecret)
 	config := oauth1.Config{
@@ -26,6 +27,7 @@ func oauth1Client() *http.Client {
 	return config.Client(cbg, token)
 }
 
+// oauth2Client app auth
 func oauth2Client() *http.Client {
 	config := &clientcredentials.Config{
 		ClientID:     twitterYaml.ConsumerKey,
@@ -36,21 +38,15 @@ func oauth2Client() *http.Client {
 }
 
 func startTwitterClient() {
-	client = twitter.NewClient(oauth2Client())
+	client = twitter.NewClient(oauth1Client())
 }
 
 func refreshTwitterStream(screenNames []string) {
 
-	// 如果之前已有串流
-	if stream != nil {
-		stream.Stop()
-		stream = nil
-	}
-
 	userMap, err := UserLookUpCache(screenNames)
 
 	if err != nil {
-		logger.Warnf("查找用戶ID時出現錯誤: %v", err)
+		logger.Warnf("查找用戶 %v 的ID時出現錯誤: %v", screenNames, err)
 		logger.Warnf("十秒後重試...")
 		<-time.After(time.Second * 10)
 		refreshTwitterStream(screenNames)
@@ -63,8 +59,10 @@ func refreshTwitterStream(screenNames []string) {
 		toFollow = append(toFollow, id)
 	}
 
+	logger.Infof("正在刷新推特串流...")
+
 	onlyFollowers := &twitter.StreamFilterParams{
-		FilterLevel:   "medium",
+		//FilterLevel:   "medium",
 		Follow:        toFollow,
 		StallWarnings: twitter.Bool(true),
 	}
@@ -79,7 +77,10 @@ func refreshTwitterStream(screenNames []string) {
 		return
 	}
 
-	mux.HandleChan(stream.Messages)
+	go mux.HandleChan(stream.Messages)
+
+	logger.Infof("新的推特串流已啟動。")
+
 }
 
 func initMuxHandle(publisher crawling.Publisher) {
@@ -89,12 +90,17 @@ func initMuxHandle(publisher crawling.Publisher) {
 	}
 	m.Tweet = func(tweet *twitter.Tweet) {
 		logger.Infof("%s 發佈了新動態", tweet.User.Name)
-		logger.Infof("%+v", *tweet)
+		/*
+			if b, err := json.MarshalIndent(tweet, "", "\t"); err == nil {
+				fmt.Println(string(b))
+			} else {
+				logger.Infof("%+v", tweet)
+			}
+		*/
 	}
 	m.Warning = func(warning *twitter.StallWarning) {
 		logger.Warnf("收到警告: %v", warning.Message)
 	}
-
 	mux = &m
 }
 
@@ -102,6 +108,8 @@ func signalForStop(ctx context.Context, done context.CancelFunc) {
 	defer done()
 	<-ctx.Done()
 	if stream != nil {
+		logger.Infof("正在關閉推特串流...")
 		stream.Stop() // blocking wait
+		logger.Infof("推特串流已關閉。")
 	}
 }

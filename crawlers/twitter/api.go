@@ -47,9 +47,11 @@ func UserLookUpCache(screenNames []string) (map[string]string, error) {
 				for _, screen := range toFetch {
 					notFound.Add(screen)
 				}
-				return cache, nil
+			} else if fetched == nil {
+				return nil, err
+			} else {
+				logger.Errorf("查找用戶 %s 時出現錯誤: %v", strings.Join(toFetch, ", "), err)
 			}
-			return nil, err
 		}
 
 		if fetched != nil {

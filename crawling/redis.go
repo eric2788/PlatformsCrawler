@@ -2,15 +2,18 @@ package crawling
 
 import (
 	"fmt"
+	mapset "github.com/deckarep/golang-set"
 	"github.com/eric2788/PlatformsCrawler/file"
 	"github.com/go-redis/redis/v8"
 	"reflect"
+	"strings"
 	"sync"
 )
 
 var (
-	cli *redis.Client
-	mu  = &sync.Mutex{}
+	cli      *redis.Client
+	mu       = &sync.Mutex{}
+	notFound = mapset.NewSet()
 )
 
 func initRedis() {
@@ -54,6 +57,18 @@ func GetAllMap(key string, dict *map[string]string) error {
 	return nil
 }
 
+func ClearMap(key string, fields ...string) (int64, error) {
+	if cli == nil {
+		return -1, fmt.Errorf("redis client does not initalized")
+	}
+
+	if len(fields) > 0 {
+		return cli.HDel(ctx, key, fields...).Result()
+	} else {
+		return cli.Del(ctx, key).Result()
+	}
+}
+
 func GetMap(key string, dict *map[string]string, fields ...string) ([]string, error) {
 
 	var errorField []string
@@ -79,4 +94,74 @@ func GetMap(key string, dict *map[string]string, fields ...string) ([]string, er
 
 	*dict = values
 	return errorField, nil
+}
+
+func LoadWithCache(key string, fetch func(toFetch []string) (map[string]string, error), isNotFound func(err error) bool, fields ...string) (map[string]string, error) {
+	var cache map[string]string
+
+	if notInCaches, err := GetMap(key, &cache, fields...); err != nil {
+		return nil, err
+	} else if len(notInCaches) == 0 { // all names are in the cache
+		return cache, nil
+	} else { // some names can't get
+
+		toFetch := make([]string, 0)
+
+		// 透過快取作過濾
+		for _, name := range notInCaches {
+			if notFound.Contains(name) {
+				continue
+			}
+			toFetch = append(toFetch, name)
+		}
+
+		if len(toFetch) == 0 {
+			return cache, nil
+		}
+
+		fetched, err := fetch(toFetch)
+
+		if err != nil {
+
+			if isNotFound(err) {
+				logger.Warnf("查無這些用戶: %v", strings.Join(toFetch, ", "))
+				for _, screen := range toFetch {
+					notFound.Add(screen)
+				}
+			} else if fetched == nil {
+				return nil, err
+			} else {
+				logger.Errorf("查找用戶 %s 時出現錯誤: %v", strings.Join(toFetch, ", "), err)
+			}
+		}
+
+		if fetched != nil {
+
+			if err := SaveMap(key, fetched); err != nil {
+				logger.Warnf("Redis 儲存 用戶資訊 時 出現錯誤: %v", err)
+				logger.Warnf("儲存的資訊: %v", fetched)
+			}
+
+			for screen, id := range fetched {
+				cache[screen] = id
+			}
+
+			//把得出的結果加到 set 來檢查某些沒有加到結果的 screenNames
+			nameSet := mapset.NewSet()
+
+			for screen := range cache {
+				nameSet.Add(screen)
+			}
+
+			// 然後加到 notFound 中作為例外
+			for _, name := range fields {
+				if !nameSet.Contains(name) {
+					notFound.Add(name)
+				}
+			}
+
+		}
+
+		return cache, nil
+	}
 }

@@ -10,8 +10,8 @@ import (
 	"time"
 
 	_ "github.com/eric2788/PlatformsCrawler/crawlers/bilibili"
-	//_ "github.com/eric2788/PlatformsCrawler/crawlers/twitter"
-	//_ "github.com/eric2788/PlatformsCrawler/crawlers/youtube"
+	_ "github.com/eric2788/PlatformsCrawler/crawlers/twitter"
+	_ "github.com/eric2788/PlatformsCrawler/crawlers/youtube"
 )
 
 func main() {

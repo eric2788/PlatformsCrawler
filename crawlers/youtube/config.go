@@ -2,7 +2,6 @@ package youtube
 
 type Configuration struct {
 	Interval        int64  `yaml:"interval"`
-	NotLiveKeyword  string `yaml:"notLiveKeyword"`
 	UpComingKeyword string `yaml:"upComingKeyword"`
 	LiveKeyword     string `yaml:"liveKeyword"`
 
@@ -17,9 +16,8 @@ type ApiConfig struct {
 
 var youtubeYaml = &Configuration{
 	Interval:        60,
-	NotLiveKeyword:  "{\"tabRenderer\":",
 	UpComingKeyword: "\"isUpcoming\":true",
-	LiveKeyword:     "\"videoViewCountRenderer\":",
+	LiveKeyword:     "<link rel=\"canonical\" href=\"https://www.youtube.com/watch\\?v=(?P<id>\\w+)\">",
 	Api: &ApiConfig{
 		Region:   "SG",
 		Language: "zh-TW",

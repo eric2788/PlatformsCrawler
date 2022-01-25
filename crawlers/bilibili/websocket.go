@@ -51,6 +51,7 @@ func onReceiveMessage(ctx context.Context, conn *websocket.Conn, wg *sync.WaitGr
 		}
 		wg.Done()
 	}()
+	logger.Infof("Biligo WebSocket 連接成功。")
 	for {
 		select {
 		case <-ctx.Done():

@@ -67,6 +67,10 @@ func runYoutubeSpider(ctx context.Context, channelId string, wg *sync.WaitGroup,
 	defer ticker.Stop()
 	defer instance.channels.Remove(channelId)
 
+	channelName := instance.getChannelName(channelId)
+
+	logger.Infof("頻道 %s 監控已啟動。", channelName)
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -78,7 +82,7 @@ func runYoutubeSpider(ctx context.Context, channelId string, wg *sync.WaitGroup,
 				continue
 			}
 
-			logger.Debugf("%s 的狀態是 %v", instance.getChannelName(channelId), status.Type)
+			logger.Debugf("%s 的狀態是 %v", channelName, status.Type)
 
 			// 與上一次的狀態相同
 			if lastStatus, ok := statusMap.Load(channelId); ok {

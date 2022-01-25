@@ -88,9 +88,9 @@ func retryDelay(ctx context.Context, wg *sync.WaitGroup) {
 	logger.Warnf("五秒後重連...")
 	<-time.After(time.Second * 5)
 	startWebSocket(ctx, wg)
-	if subRequest != nil {
+	if listening != nil {
 		// 重新訂閱
-		for _, err := doRequest(subRequest); err != nil; {
+		for _, err := doSubscribeRequest(listening); err != nil; {
 			logger.Errorf("重新訂閱失敗: %v，五秒後重試...", err)
 			<-time.After(time.Second * 5)
 		}

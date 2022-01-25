@@ -15,9 +15,9 @@ import (
 const id = "platforms_crawler"
 
 var (
-	publisher  crawling.Publisher
-	livedSet   = mapset.NewSet()
-	subRequest *http.Request
+	publisher crawling.Publisher
+	livedSet  = mapset.NewSet()
+	listening []string
 )
 
 // antiDuplicateLive 基於 LIVE 指令可能會連續發送幾次
@@ -57,7 +57,7 @@ func handleMessage(b []byte) {
 	}
 }
 
-func createSubscribeRequest(room []string) (url.URL, *http.Request, error) {
+func doSubscribeRequest(room []string) (url.URL, error) {
 
 	httpUrl := url.URL{
 		Host:     bilibiliYaml.BiliLiveHost,
@@ -77,11 +77,24 @@ func createSubscribeRequest(room []string) (url.URL, *http.Request, error) {
 
 	body := strings.NewReader(form.Encode())
 	req, err := http.NewRequest(http.MethodPost, httpUrl.String(), body)
-	if req != nil {
-		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		req.Header.Set("Authorization", id)
+
+	if err != nil {
+		return httpUrl, err
 	}
-	return httpUrl, req, err
+
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Authorization", id)
+
+	resp, err := http.DefaultClient.Do(req)
+
+	if err != nil {
+		return httpUrl, err
+	}
+
+	if resp.StatusCode != 200 {
+		return httpUrl, fmt.Errorf(resp.Status)
+	}
+	return httpUrl, nil
 }
 
 func subscribeAll(room []string, ctx context.Context, done context.CancelFunc, p crawling.Publisher) {
@@ -101,16 +114,8 @@ func subscribeAll(room []string, ctx context.Context, done context.CancelFunc, p
 	}
 
 	logger.Debugf("正在設置訂閱...")
-	httpUrl, req, err := createSubscribeRequest(room)
-	subRequest = req
-
-	if err != nil {
-		logger.Errorf("嘗試請求 %s 時出現錯誤: %v", httpUrl.String(), err)
-		retry()
-		return
-	}
-
-	_, err = doRequest(req)
+	httpUrl, err := doSubscribeRequest(room)
+	listening = room
 
 	if err != nil {
 		logger.Errorf("嘗試設置訂閱時出現錯誤: %v", err)
@@ -123,17 +128,6 @@ func subscribeAll(room []string, ctx context.Context, done context.CancelFunc, p
 	defer done()
 	<-ctx.Done()
 	unSubscribe(httpUrl)
-}
-
-func doRequest(req *http.Request) (*http.Response, error) {
-	resp, err := http.DefaultClient.Do(req.Clone(context.Background()))
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf(resp.Status)
-	}
-	return resp, nil
 }
 
 func unSubscribe(httpUrl url.URL) {

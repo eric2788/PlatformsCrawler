@@ -66,11 +66,7 @@ func onReceiveMessage(ctx context.Context, conn *websocket.Conn, wg *sync.WaitGr
 			// Error
 			if err != nil {
 				logger.Errorf("Websocket 嘗試讀取消息時出現錯誤: %v", err)
-				go func() {
-					logger.Warnf("五秒後重連...")
-					<-time.After(time.Second * 5)
-					go startWebSocket(ctx, wg)
-				}()
+				go retryDelay(ctx, wg)
 				return
 			}
 			go handleMessage(message)
@@ -86,4 +82,18 @@ func testReadMessageWithRandomError(conn *websocket.Conn) (messageType int, p []
 		err = fmt.Errorf("test error")
 	}
 	return
+}
+
+func retryDelay(ctx context.Context, wg *sync.WaitGroup) {
+	logger.Warnf("五秒後重連...")
+	<-time.After(time.Second * 5)
+	startWebSocket(ctx, wg)
+	if subRequest != nil {
+		// 重新訂閱
+		for _, err := doRequest(subRequest); err != nil; {
+			logger.Errorf("重新訂閱失敗: %v，五秒後重試...", err)
+			<-time.After(time.Second * 5)
+		}
+		logger.Infof("重新訂閱成功。")
+	}
 }

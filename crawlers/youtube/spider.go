@@ -3,6 +3,7 @@ package youtube
 import (
 	"context"
 	"github.com/eric2788/PlatformsCrawler/crawling"
+	"github.com/eric2788/common-utils/datetime"
 	"google.golang.org/api/youtube/v3"
 	"sync"
 	"time"
@@ -106,10 +107,10 @@ func handleBroadcast(channelId string, status *ChannelStatus, publisher crawling
 
 	switch status.Type {
 	case UpComing:
-		logger.Infof("%s 在油管有預定直播: ", name)
+		logger.Infof("%s 在油管有預定直播。", name)
 		break
 	case Live:
-		logger.Infof("%s 正在油管直播: ", name)
+		logger.Infof("%s 正在油管直播。", name)
 		break
 	default:
 		logger.Infof("%s 的油管直播已結束。", name)
@@ -155,13 +156,23 @@ func getCover(details *youtube.ThumbnailDetails) *string {
 }
 
 func getPublishTime(video *youtube.Video) string {
+	cst, _ := time.LoadLocation("Asia/HongKong")
+	var publishTime string
 	if video.LiveStreamingDetails != nil {
 		d := video.LiveStreamingDetails
-		if d.ScheduledStartTime != "" {
-			return d.ScheduledStartTime
+		if d.ActualStartTime != "" {
+			publishTime = d.ActualStartTime
 		} else {
-			return d.ActualStartTime
+			publishTime = d.ScheduledStartTime
 		}
 	}
-	return video.Snippet.PublishedAt
+	publishTime = video.Snippet.PublishedAt
+	t, err := datetime.ParseISOStr(publishTime)
+
+	if err != nil {
+		logger.Warnf("嘗試轉換 %s 為時區 UTC+8 時出現錯誤，將改為原時區。", publishTime)
+		return publishTime
+	}
+	// Parse back to ISO string
+	return t.In(cst).Format("2006-01-02T15:04:05Z07")
 }

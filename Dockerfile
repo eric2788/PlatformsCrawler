@@ -4,8 +4,6 @@ WORKDIR /app
 
 COPY . .
 
-RUN go mod download
-
 RUN go build -o /go/bin/crawler
 
 FROM alpine:latest

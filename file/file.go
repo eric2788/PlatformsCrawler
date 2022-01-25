@@ -16,6 +16,7 @@ type Configuration struct {
 	// seconds
 	CheckInterval int64               `yaml:"checkInterval"`
 	Redis         *RedisConfiguration `yaml:"redis"`
+	TimeZone      string              `yaml:"timeZone"`
 }
 
 type RedisConfiguration struct {
@@ -33,6 +34,7 @@ var defaultAppConfig = Configuration{
 		Database: 1,
 		Password: "",
 	},
+	TimeZone: "Asia/Hong_Kong",
 }
 
 func LoadApplicationYaml() {

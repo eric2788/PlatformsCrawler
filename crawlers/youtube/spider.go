@@ -3,6 +3,7 @@ package youtube
 import (
 	"context"
 	"github.com/eric2788/PlatformsCrawler/crawling"
+	"github.com/eric2788/PlatformsCrawler/file"
 	"github.com/eric2788/common-utils/datetime"
 	"google.golang.org/api/youtube/v3"
 	"sync"
@@ -156,7 +157,7 @@ func getCover(details *youtube.ThumbnailDetails) *string {
 }
 
 func getPublishTime(video *youtube.Video) string {
-	cst, _ := time.LoadLocation("Asia/Hong_Kong")
+
 	var publishTime string
 	if video.LiveStreamingDetails != nil {
 		d := video.LiveStreamingDetails
@@ -167,12 +168,15 @@ func getPublishTime(video *youtube.Video) string {
 		}
 	}
 	publishTime = video.Snippet.PublishedAt
-	t, err := datetime.ParseISOStr(publishTime)
-
+	cst, err := time.LoadLocation(file.ApplicationYaml.TimeZone)
 	if err != nil {
-		logger.Warnf("嘗試轉換 %s 為時區 UTC+8 時出現錯誤，將改為原時區。", publishTime)
+		logger.Warnf("找不到時區 %s (%v), 將改用原時區。", file.ApplicationYaml.TimeZone, err)
 		return publishTime
 	}
-	// Parse back to ISO string
-	return t.In(cst).Format("2006-01-02T15:04:05Z07")
+	t, err := datetime.ToTimeZone(publishTime, cst)
+	if err != nil {
+		logger.Warnf("嘗試轉換 %s 為時區 %s 時出現錯誤，將改為原時區。", publishTime, file.ApplicationYaml.TimeZone)
+		return publishTime
+	}
+	return datetime.FormatISO(t)
 }

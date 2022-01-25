@@ -156,7 +156,7 @@ func getCover(details *youtube.ThumbnailDetails) *string {
 }
 
 func getPublishTime(video *youtube.Video) string {
-	cst, _ := time.LoadLocation("Asia/HongKong")
+	cst, _ := time.LoadLocation("Asia/Hong_Kong")
 	var publishTime string
 	if video.LiveStreamingDetails != nil {
 		d := video.LiveStreamingDetails

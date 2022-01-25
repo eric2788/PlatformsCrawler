@@ -126,7 +126,7 @@ func subscribeAll(room []string, ctx context.Context, done context.CancelFunc, p
 }
 
 func doRequest(req *http.Request) (*http.Response, error) {
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := http.DefaultClient.Do(req.Clone(context.Background()))
 	if err != nil {
 		return nil, err
 	}

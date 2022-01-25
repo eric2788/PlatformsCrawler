@@ -2,6 +2,7 @@ package crawling
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	mapset "github.com/deckarep/golang-set"
 	"github.com/eric2788/PlatformsCrawler/logging"
@@ -49,6 +50,16 @@ func getPublisherFunc(client *redis.Client, crawling *Crawling) Publisher {
 	return func(room string, arg interface{}) {
 		prefix := crawling.Crawler.Prefix()
 		topic := fmt.Sprintf("%s:%s", prefix, room)
+
+		if _, ok := arg.([]byte); !ok {
+			obj, err := json.Marshal(arg)
+			if err == nil {
+				arg = obj
+			} else {
+				logger.Warnf("嘗試轉換 %+v 為 JSON內容 時出現錯誤: %v", arg, err)
+			}
+		}
+
 		if err := client.Publish(ctx, topic, arg).Err(); err != nil {
 			logger.Errorf("嘗試推送訊息到 topic %s 時出現錯誤: %v", topic, err)
 			logger.Errorf("推送訊息: %+v", arg)

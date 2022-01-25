@@ -30,7 +30,7 @@ func startWebSocket(ctx context.Context, wg *sync.WaitGroup) {
 		logger.Errorf("連線到 Websocket %s 時出現錯誤: %v", wsUrl.String(), err)
 		logger.Warnf("十秒後重試")
 		<-time.After(time.Second * 10)
-		startWebSocket(ctx, wg)
+		go startWebSocket(ctx, wg)
 		return
 	}
 
@@ -69,7 +69,7 @@ func onReceiveMessage(ctx context.Context, conn *websocket.Conn, wg *sync.WaitGr
 				go func() {
 					logger.Warnf("五秒後重連...")
 					<-time.After(time.Second * 5)
-					startWebSocket(ctx, wg)
+					go startWebSocket(ctx, wg)
 				}()
 				return
 			}

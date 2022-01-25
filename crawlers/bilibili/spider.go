@@ -33,6 +33,8 @@ func handleMessage(b []byte) {
 		// 僅作為 logging
 		if data["command"] == "LIVE" {
 			logger.Infof("檢測到 %s(%d) 在 B站 開播了。", info["name"], int64(roomId))
+		} else {
+			logger.Debugf("Received %s command from room %d", data["command"], int64(roomId))
 		}
 	} else {
 		logger.Warnf("未知的房間 %+v", data["live_info"])

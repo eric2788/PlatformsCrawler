@@ -11,10 +11,12 @@ RUN go build -o /go/bin/crawler
 FROM alpine:latest
 
 COPY --from=builder /go/bin/crawler /crawler
-RUN chmod +x /blive
+RUN chmod +x /crawler
 
 ENV GIN_MODE=release
 
-EXPOSE 8080
+EXPOSE 8989
+
+VOLUME [ "/config" ]
 
 ENTRYPOINT [ "/crawler" ]

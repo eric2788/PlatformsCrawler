@@ -2,6 +2,7 @@ package bilibili
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 )
@@ -11,11 +12,15 @@ func TestWebSocket(t *testing.T) {
 	// file.LoadYaml("bilibili", bilibiliYaml)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
-	go startWebSocket(ctx)
+	wg := &sync.WaitGroup{}
+	go startWebSocket(ctx, wg)
 
 	listen := []string{
 		"876396",
 	}
 
 	go subscribeAll(listen, ctx, cancel, nil)
+	<-time.After(time.Second * 30)
+	cancel()
+	wg.Wait()
 }

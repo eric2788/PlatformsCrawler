@@ -16,7 +16,8 @@ var (
 	notFound = mapset.NewSet()
 )
 
-func initRedis() {
+// InitRedis also for test
+func InitRedis() {
 
 	rConfig := file.ApplicationYaml.Redis
 

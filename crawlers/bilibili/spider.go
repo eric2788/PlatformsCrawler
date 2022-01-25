@@ -3,6 +3,7 @@ package bilibili
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/eric2788/PlatformsCrawler/crawling"
 	"net/http"
 	"net/url"
@@ -16,12 +17,26 @@ var publisher crawling.Publisher
 
 // handleMessage here to publish redis message
 func handleMessage(b []byte) {
-	var info map[string]interface{}
-	if err := json.Unmarshal(b, &info); err != nil {
-		logger.Warnf("json error: %v", err)
+	var data map[string]interface{}
+	if err := json.Unmarshal(b, &data); err != nil {
+		logger.Warnf("解析 JSON 數據時出現錯誤: %v", err)
 		return
 	}
-	logger.Infof("Received: %v", info["command"])
+	if info, ok := data["live_info"].(map[string]interface{}); ok {
+		roomId := info["room_id"].(float64)
+		// 有機會為 null
+		if publisher != nil {
+			publisher(fmt.Sprintf("%d", int64(roomId)), b)
+		} else {
+			logger.Debugf("推送方式為 null，已略過")
+		}
+		// 僅作為 logging
+		if data["command"] == "LIVE" {
+			logger.Infof("檢測到 %s(%d) 在 B站 開播了。", info["name"], int64(roomId))
+		}
+	} else {
+		logger.Warnf("未知的房間 %+v", data["live_info"])
+	}
 }
 
 func subscribeAll(room []string, ctx context.Context, done context.CancelFunc, p crawling.Publisher) {

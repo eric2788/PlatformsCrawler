@@ -2,6 +2,7 @@ package youtube
 
 import (
 	"fmt"
+	"github.com/eric2788/common-utils/regex"
 	"io"
 	"net/http"
 	"regexp"
@@ -42,7 +43,7 @@ func GetChannelStatus(channelId string) (*ChannelStatus, error) {
 		return &ChannelStatus{Type: None}, nil // no streaming or upcoming
 	} else {
 
-		find := getParams(idRegex, content)
+		find := regex.GetParams(idRegex, content)
 
 		videoId := find["id"]
 
@@ -73,18 +74,4 @@ func readAsString(res *http.Response) (string, error) {
 	}
 
 	return string(b), nil
-}
-
-func getParams(reg *regexp.Regexp, text string) (paramsMap map[string]string) {
-
-	match := reg.FindStringSubmatch(text)
-
-	paramsMap = make(map[string]string)
-	for i, name := range reg.SubexpNames() {
-		if i > 0 && i <= len(match) {
-			paramsMap[name] = match[i]
-		}
-	}
-
-	return
 }

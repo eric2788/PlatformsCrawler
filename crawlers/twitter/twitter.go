@@ -5,6 +5,7 @@ import (
 	"github.com/eric2788/PlatformsCrawler/crawling"
 	"github.com/eric2788/PlatformsCrawler/file"
 	"github.com/eric2788/PlatformsCrawler/logging"
+	"github.com/eric2788/common-utils/set"
 	"strings"
 	"sync"
 )
@@ -37,6 +38,7 @@ func (c *crawler) Start() {
 }
 
 func (c *crawler) ListenAll(room []string, publisher crawling.Publisher, done context.CancelFunc) context.CancelFunc {
+	listening = set.FromStrArr(room)
 	if mux == nil {
 		initMuxHandle(publisher)
 	}

@@ -2,18 +2,41 @@ package youtube
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"github.com/eric2788/PlatformsCrawler/crawling"
+	"google.golang.org/api/youtube/v3"
 	"sync"
 	"time"
 )
 
 const channelNameKey = "youtube:channelNames"
 
-var (
-	statusMap = &sync.Map{}
+var statusMap = &sync.Map{}
+
+type (
+	LiveStatus string
+
+	LiveBroadcast struct {
+		ChannelId   string     `json:"channelId"`
+		ChannelName string     `json:"channelName"`
+		Status      LiveStatus `json:"status"`
+		Info        *LiveInfo  `json:"info"`
+	}
+
+	LiveInfo struct {
+		Cover       *string `json:"cover"`
+		Title       string  `json:"title"`
+		Id          string  `json:"id"`
+		PublishTime string  `json:"publishTime"`
+		Description string  `json:"description"`
+	}
 )
+
+func (e EventType) ToLiveStatus() LiveStatus {
+	if e == None || e == Completed {
+		return "idle"
+	}
+	return LiveStatus(e)
+}
 
 func getChannelNames(channelId ...string) (map[string]string, error) {
 	isNotFound := func(error) bool { return false }
@@ -34,7 +57,7 @@ func lookupNamesByChannelIds(channelIds []string) (map[string]string, error) {
 
 func runYoutubeSpider(ctx context.Context, channelId string, wg *sync.WaitGroup, publisher crawling.Publisher) {
 
-	statusMap.Store(channelId, None) // init first state
+	statusMap.Store(channelId, &ChannelStatus{Type: None}) // init first state
 	ticker := time.NewTicker(time.Second * time.Duration(youtubeYaml.Interval))
 
 	defer wg.Done()
@@ -56,11 +79,14 @@ func runYoutubeSpider(ctx context.Context, channelId string, wg *sync.WaitGroup,
 			logger.Debugf("%s 的狀態是 %v", instance.getChannelName(channelId), status.Type)
 
 			// 與上一次的狀態相同
-			if lastStatus, ok := statusMap.Load(channelId); ok && lastStatus.(EventType) == status.Type {
-				continue
+			if lastStatus, ok := statusMap.Load(channelId); ok {
+				last := lastStatus.(*ChannelStatus)
+				if last.Id == status.Id && status.Type == last.Type {
+					continue
+				}
 			}
 
-			statusMap.Store(channelId, status.Type)
+			statusMap.Store(channelId, status)
 			go handleBroadcast(channelId, status, publisher)
 		}
 	}
@@ -69,6 +95,14 @@ func runYoutubeSpider(ctx context.Context, channelId string, wg *sync.WaitGroup,
 func handleBroadcast(channelId string, status *ChannelStatus, publisher crawling.Publisher) {
 
 	name := instance.getChannelName(channelId)
+
+	broadcast := &LiveBroadcast{
+		Status:      status.Type.ToLiveStatus(),
+		ChannelId:   channelId,
+		ChannelName: name,
+	}
+
+	defer publisher(channelId, broadcast)
 
 	switch status.Type {
 	case UpComing:
@@ -83,18 +117,51 @@ func handleBroadcast(channelId string, status *ChannelStatus, publisher crawling
 	}
 
 	// only upcoming and live can get video
-	video, err := getVideos(status.Id)
+	videos, err := getVideos(status.Id)
 	if err != nil {
 		logger.Errorf("嘗試獲取油管視頻資訊 %s 時出現錯誤: %v", status.Id, err)
 		return
-	} else if len(video) == 0 {
+	} else if len(videos) == 0 {
 		logger.Warnf("找不到 %s 的油管視頻 %s", name, status.Id)
 		return
 	}
 
-	if b, err := json.MarshalIndent(video[0].Snippet, "", "\t"); err != nil {
-		logger.Errorf("json error: %v", err)
-	} else {
-		fmt.Println(string(b))
+	video := videos[0]
+
+	broadcast.Info = &LiveInfo{
+		Cover:       getCover(video.Snippet.Thumbnails),
+		Title:       video.Snippet.Title,
+		Id:          video.Id,
+		PublishTime: getPublishTime(video),
+		Description: video.Snippet.Description,
 	}
+}
+
+func getCover(details *youtube.ThumbnailDetails) *string {
+	switch {
+	case details.Maxres != nil:
+		return &details.Maxres.Url
+	case details.Standard != nil:
+		return &details.Standard.Url
+	case details.High != nil:
+		return &details.High.Url
+	case details.Medium != nil:
+		return &details.Medium.Url
+	case details.Default != nil:
+		return &details.Default.Url
+	default:
+		return nil
+	}
+}
+
+func getPublishTime(video *youtube.Video) string {
+	if video.LiveStreamingDetails != nil {
+		d := video.LiveStreamingDetails
+		if d.ScheduledStartTime != "" {
+			return d.ScheduledStartTime
+		} else {
+			return d.ActualStartTime
+		}
+	}
+	return video.Snippet.PublishedAt
 }

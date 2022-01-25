@@ -20,7 +20,7 @@ var (
 // StartCrawling remember use via go
 func StartCrawling(tick *time.Ticker, ctx context.Context, stop chan<- struct{}) {
 
-	initRedis()
+	InitRedis()
 
 	defer stopAllAndWait(stop)
 

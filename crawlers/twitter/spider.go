@@ -5,16 +5,18 @@ import (
 	"github.com/dghubble/go-twitter/twitter"
 	"github.com/dghubble/oauth1"
 	"github.com/eric2788/PlatformsCrawler/crawling"
+	"github.com/eric2788/common-utils/set"
 	"golang.org/x/oauth2/clientcredentials"
 	"net/http"
 	"time"
 )
 
 var (
-	cbg    = context.Background()
-	mux    *twitter.SwitchDemux
-	client *twitter.Client
-	stream *twitter.Stream
+	cbg       = context.Background()
+	mux       *twitter.SwitchDemux
+	client    *twitter.Client
+	stream    *twitter.Stream
+	listening *set.StringSet
 )
 
 // oauth1Client user auth
@@ -62,7 +64,7 @@ func refreshTwitterStream(screenNames []string) {
 	logger.Infof("正在刷新推特串流...")
 
 	onlyFollowers := &twitter.StreamFilterParams{
-		//FilterLevel:   "medium",
+		//FilterLevel:   "low",
 		Follow:        toFollow,
 		StallWarnings: twitter.Bool(true),
 	}
@@ -86,17 +88,14 @@ func refreshTwitterStream(screenNames []string) {
 func initMuxHandle(publisher crawling.Publisher) {
 	m := twitter.NewSwitchDemux()
 	m.StatusDeletion = func(deletion *twitter.StatusDeletion) {
-		logger.Infof("%s 刪除了動態", deletion.UserIDStr)
+		logger.Debugf("%s 刪除了動態", deletion.UserIDStr)
 	}
 	m.Tweet = func(tweet *twitter.Tweet) {
+		if !listening.Contains(tweet.User.ScreenName) {
+			return
+		}
 		logger.Infof("%s 發佈了新動態", tweet.User.Name)
-		/*
-			if b, err := json.MarshalIndent(tweet, "", "\t"); err == nil {
-				fmt.Println(string(b))
-			} else {
-				logger.Infof("%+v", tweet)
-			}
-		*/
+		go publisher(tweet.User.ScreenName, tweet)
 	}
 	m.Warning = func(warning *twitter.StallWarning) {
 		logger.Warnf("收到警告: %v", warning.Message)

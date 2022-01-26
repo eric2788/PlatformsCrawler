@@ -3,6 +3,8 @@ package youtube
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"regexp"
 	"testing"
 )
 
@@ -43,6 +45,27 @@ func TestGetChannelStatus(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestDoubleReadFind(t *testing.T) {
+	r := regexp.MustCompile("google")
+	r2 := regexp.MustCompile("search")
+	res, err := http.Get("https://google.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	c, err := readAndFind(res, r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println(c)
+
+	c, err = readAndFind(res, r2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println(c)
 }
 
 func showVideoContent(id string) error {

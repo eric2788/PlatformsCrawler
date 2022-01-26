@@ -16,13 +16,13 @@ var (
 	logger   = logging.GetCrawlerLogger(Tag)
 	instance = &crawler{
 		channels:  mapset.NewSet(),
-		nameCache: make(map[string]string),
+		nameCache: &sync.Map{},
 	}
 )
 
 type crawler struct {
 	channels  mapset.Set
-	nameCache map[string]string
+	nameCache *sync.Map
 }
 
 func (c *crawler) Prefix() string {
@@ -57,8 +57,8 @@ func (c *crawler) Stop(wg *sync.WaitGroup) {
 }
 
 func (c *crawler) getChannelName(id string) string {
-	if name, ok := c.nameCache[id]; ok {
-		return name
+	if name, ok := c.nameCache.Load(id); ok {
+		return name.(string)
 	} else {
 		toFetch := make([]string, 0)
 		for channel := range c.channels.Iter() {
@@ -72,11 +72,11 @@ func (c *crawler) getChannelName(id string) string {
 		}
 
 		for id, screen := range channelNames {
-			c.nameCache[id] = screen
+			c.nameCache.Store(id, screen)
 		}
 
 		if name, ok = channelNames[id]; ok {
-			return name
+			return name.(string)
 		} else {
 			return id // 查無頻道
 		}

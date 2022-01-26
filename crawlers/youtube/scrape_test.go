@@ -3,6 +3,7 @@ package youtube
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/eric2788/common-utils/request"
 	"net/http"
 	"regexp"
 	"testing"
@@ -15,6 +16,7 @@ var channels = map[string]string{
 	"Komori":     "UCBIR44irWpj1eTx0ZQFofHg",
 	"Serena":     "UCRXBTd80F5IIWWY4HatJ5Ug",
 	"music":      "UCcHWhgSsMBemnyLhg6GL1vA",
+	"nano":       "UC0lIq8G4LgDPlXsDmYSUExw",
 }
 
 func TestGetChannelStatus(t *testing.T) {
@@ -55,17 +57,12 @@ func TestDoubleReadFind(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer res.Body.Close()
-	c, err := readAndFind(res, r)
+	c, err := request.ReadForRegex(res, r, r2)
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Println(c)
-
-	c, err = readAndFind(res, r2)
-	if err != nil {
-		t.Fatal(err)
-	}
-	fmt.Println(c)
+	fmt.Println(c[0])
+	fmt.Println(c[1])
 }
 
 func showVideoContent(id string) error {
@@ -80,10 +77,14 @@ func showVideoContent(id string) error {
 		return err
 	}
 
-	if b, err := json.MarshalIndent(video[0].Snippet, "", "\t"); err != nil {
-		return err
-	} else {
-		fmt.Printf(string(b))
-	}
+	/*
+		if b, err := json.MarshalIndent(video[0].Snippet, "", "\t"); err != nil {
+			return err
+		} else {
+			fmt.Printf(string(b))
+		}
+
+	*/
+	fmt.Println(video[0].Snippet.Title)
 	return nil
 }

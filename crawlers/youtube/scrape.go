@@ -1,10 +1,9 @@
 package youtube
 
 import (
-	"bufio"
 	"fmt"
 	"github.com/eric2788/common-utils/regex"
-	"io"
+	"github.com/eric2788/common-utils/request"
 	"net/http"
 	"regexp"
 )
@@ -36,28 +35,22 @@ func GetChannelStatus(channelId string) (*ChannelStatus, error) {
 
 	defer res.Body.Close()
 
-	content, err := readAndFind(res, idRegex)
+	contents, err := request.ReadForRegex(res, idRegex, upcomingRegex)
 
 	if err != nil {
 		return nil, err
 	}
 
-	if content == "" {
+	if contents[0] == "" {
 		return &ChannelStatus{Type: None}, nil // no streaming or upcoming
 	} else {
 
-		find := regex.GetParams(idRegex, content)
+		find := regex.GetParams(idRegex, contents[0])
 		videoId := find["id"]
 
 		status := &ChannelStatus{Id: videoId}
 
-		content, err = readAndFind(res, upcomingRegex)
-
-		if err != nil {
-			return nil, err
-		}
-
-		if content != "" {
+		if contents[1] != "" {
 			status.Type = UpComing
 		} else {
 			status.Type = Live
@@ -65,18 +58,4 @@ func GetChannelStatus(channelId string) (*ChannelStatus, error) {
 
 		return status, nil
 	}
-}
-
-// readAndFind 每行搜索，遇到符合條件立刻返回，防止搜索過長的字符串
-func readAndFind(res *http.Response, reg *regexp.Regexp) (string, error) {
-	bufReader := bufio.NewReader(res.Body)
-	for line, _, err := bufReader.ReadLine(); err != io.EOF; line, _, err = bufReader.ReadLine() {
-		if err != nil {
-			return "", err
-		}
-		if reg.MatchString(string(line)) {
-			return string(line), nil
-		}
-	}
-	return "", nil
 }

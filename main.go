@@ -37,6 +37,7 @@ func main() {
 	waitStop := make(chan struct{}, 1)
 	go crawling.StartCrawling(ticker, ctx, waitStop)
 	go rest.StartServe(*port)
+	go debugServe()
 
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt, os.Kill)

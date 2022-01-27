@@ -117,7 +117,12 @@ func subscribeAll(room []string, ctx context.Context, done context.CancelFunc, p
 		publisher = p
 	}
 
-	retry := func() {
+	logger.Debugf("正在設置訂閱...")
+	httpUrl, err := doSubscribeRequest(room)
+	listening = room
+
+	if err != nil {
+		logger.Errorf("嘗試設置訂閱時出現錯誤: %v", err)
 		logger.Warnf("三十秒後嘗試")
 		select {
 		case <-time.After(time.Second * 30):
@@ -125,23 +130,14 @@ func subscribeAll(room []string, ctx context.Context, done context.CancelFunc, p
 		case <-ctx.Done(): // 等待三十秒時需要刷新訂閱，則直接關閉
 			done()
 		}
-	}
-
-	logger.Debugf("正在設置訂閱...")
-	httpUrl, err := doSubscribeRequest(room)
-	listening = room
-
-	if err != nil {
-		logger.Errorf("嘗試設置訂閱時出現錯誤: %v", err)
-		retry()
 		return
 	}
 
 	logger.Debugf("設置訂閱成功。")
 
-	defer done()
 	<-ctx.Done()
 	unSubscribe(httpUrl)
+	done()
 }
 
 func unSubscribe(httpUrl url.URL) {

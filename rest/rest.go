@@ -25,6 +25,7 @@ func StartServe(port int) {
 	if err != nil {
 		logger.Fatal(err)
 	}
+
 }
 
 func AddHook(path string, hook RouterHook) {

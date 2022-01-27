@@ -1,7 +1,7 @@
 package youtube
 
 /*
-func TestGetChannelByUsername(t *testing.T) {
+func TestGetnelByUsername(t *testing.T) {
 
 	username, id := "hanazono222", "UCRXBTd80F5IIWWY4HatJ5Ug"
 

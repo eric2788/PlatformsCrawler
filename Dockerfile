@@ -18,7 +18,11 @@ RUN chmod +x /crawler
 
 ENV GIN_MODE=release
 
+# rest api
 EXPOSE 8989
+
+# debug
+EXPOSE 45677
 
 VOLUME [ "/config" ]
 

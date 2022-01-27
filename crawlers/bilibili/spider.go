@@ -38,14 +38,28 @@ func handleMessage(b []byte) {
 		roomId := info["room_id"].(float64)
 		// 有機會為 null
 		if publisher != nil {
-			if data["command"] == "LIVE" && livedSet.Contains(roomId) {
-				return // 開播通知去重
+
+			if data["command"] == "LIVE" {
+				if m, ok := data["content"].(map[string]interface{}); ok {
+					if _, exist := m["live_time"]; !exist {
+						return // 沒有 live_time 的 key 為多餘的開播推送
+					}
+				} else {
+					logger.Warnf("無法把 content 轉換為 map (空 JSON 內容?), 已使用內置去重方式。")
+					// 保險起見的方式
+					if livedSet.Contains(roomId) {
+						return // 開播通知去重
+					} else {
+						go antiDuplicateLive(roomId)
+					}
+				}
 			}
-			go antiDuplicateLive(roomId)
+
 			publisher(fmt.Sprintf("%d", int64(roomId)), b)
 		} else {
 			logger.Debugf("推送方式為 null，已略過")
 		}
+
 		// 僅作為 logging
 		if data["command"] == "LIVE" {
 			logger.Infof("檢測到 %s(%d) 在 B站 開播了。", info["name"], int64(roomId))

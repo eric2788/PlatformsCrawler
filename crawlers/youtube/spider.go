@@ -170,8 +170,10 @@ func getPublishTime(video *youtube.Video) string {
 		} else {
 			publishTime = d.ScheduledStartTime
 		}
+	} else {
+		publishTime = video.Snippet.PublishedAt
 	}
-	publishTime = video.Snippet.PublishedAt
+
 	cst, err := time.LoadLocation(file.ApplicationYaml.TimeZone)
 	if err != nil {
 		logger.Warnf("找不到時區 %s (%v), 將改用原時區。", file.ApplicationYaml.TimeZone, err)

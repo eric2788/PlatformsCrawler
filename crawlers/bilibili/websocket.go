@@ -90,7 +90,7 @@ func retryDelay(ctx context.Context, wg *sync.WaitGroup) {
 	startWebSocket(ctx, wg)
 	if listening != nil {
 		// 重新訂閱
-		for _, err := doSubscribeRequest(listening); err != nil; {
+		for _, err := doSubscribeRequest(listening); err != nil; _, err = doSubscribeRequest(listening) {
 			logger.Errorf("重新訂閱失敗: %v，五秒後重試...", err)
 			<-time.After(time.Second * 5)
 		}

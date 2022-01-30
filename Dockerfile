@@ -4,8 +4,6 @@ WORKDIR /app
 
 COPY . .
 
-RUN apk update
-
 RUN go build -o /go/bin/crawler
 
 FROM alpine:latest

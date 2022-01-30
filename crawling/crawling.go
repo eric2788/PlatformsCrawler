@@ -184,8 +184,10 @@ func stopCrawler(crawling *Crawling, wg *sync.WaitGroup) {
 		}
 		s.wg.Wait()
 	case *OnceSpec:
-		s.stopAll()
-		<-s.waitStop.Done()
+		if s.stopAll != nil {
+			s.stopAll()
+			<-s.waitStop.Done()
+		}
 	default:
 		logger.Errorf("%s 沒有可用的關閉方式", crawling.Name)
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
+	"os"
 )
 
 type EventType string
@@ -23,7 +24,8 @@ var (
 func initYoutubeService() {
 	service, err := youtube.NewService(ctx, option.WithAPIKey(youtubeYaml.Api.Key))
 	if err != nil {
-		panic(err)
+		logger.Fatal(err)
+		os.Exit(1)
 	}
 	youtubeService = service
 }

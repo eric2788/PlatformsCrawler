@@ -27,10 +27,10 @@ func GetChannelStatus(channelId string) (*ChannelStatus, error) {
 
 	res, err := http.Get(fmt.Sprintf("https://youtube.com/channel/%s/live", channelId))
 
-	if res.StatusCode == 404 {
-		return nil, fmt.Errorf("not found channel %s", channelId)
-	} else if err != nil {
+	if err != nil {
 		return nil, err
+	} else if res.StatusCode == 404 {
+		return nil, fmt.Errorf("not found channel %s", channelId)
 	}
 
 	defer res.Body.Close()

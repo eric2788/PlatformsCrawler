@@ -51,7 +51,8 @@ Docker 部署: `docker.io/eric1008818/platform-crawlers`
 
 - 創建一個 `struct` 並實現 `Crawler`
 - 根據你的監聽方式實現 `EachCrawling` 或 `OnceCrawling` 二選一
-- 在 `init` 方法中使用 `crawling.RegisterCrawler(名稱, crawler 實例, logger)`
+- 在 `init` 方法中使用 `crawling.RegisterCrawler(Tag, crawler instance, logger)`
 - 最後，在 `main.go` 透過 `_` import 你的 package 即可 
+- 如果想禁用某些推送，可以在 `application.yml` 中的 `disabledCrawlers` 屬性中加入你想要禁用的推送 Tag
 
 ### 此爬蟲目前主要負責用於我的私群專用機器人上，詳見 [mirai-val-bot](https://github.com/eric2788/miraivalbot)

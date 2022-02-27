@@ -14,8 +14,9 @@ var (
 
 type Configuration struct {
 	// seconds
-	CheckInterval int64               `yaml:"checkInterval"`
-	Redis         *RedisConfiguration `yaml:"redis"`
+	CheckInterval    int64               `yaml:"checkInterval"`
+	Redis            *RedisConfiguration `yaml:"redis"`
+	DisabledCrawlers []string            `yaml:"disabledCrawlers"`
 }
 
 type RedisConfiguration struct {

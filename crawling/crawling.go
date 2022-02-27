@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	mapset "github.com/deckarep/golang-set"
+	"github.com/eric2788/PlatformsCrawler/file"
 	"github.com/eric2788/PlatformsCrawler/logging"
+	"github.com/eric2788/common-utils/array"
 	"github.com/go-redis/redis/v8"
 	"strings"
 	"sync"
@@ -23,10 +25,26 @@ func StartCrawling(tick *time.Ticker, ctx context.Context, stop chan<- struct{})
 
 	InitRedis()
 
-	defer stopAllAndWait(stop)
+	// 啟用列表，以此爬蟲列表為準
+	var enabledCrawlers = make(map[string]*Crawling)
+
+	logger.Debugf("disabled crawlers: %v", file.ApplicationYaml.DisabledCrawlers)
+
+	for tag, crawling := range crawlers {
+		disabled := array.IndexOfString(file.ApplicationYaml.DisabledCrawlers, tag) != -1
+		logger.Debugf("[%s] %s 是否禁用: %v", tag, crawling.Name, disabled)
+		// 在禁用列表內
+		if disabled {
+			logger.Infof("爬蟲 %s 已被禁用", tag)
+			continue
+		}
+		enabledCrawlers[tag] = crawling
+	}
+
+	defer stopAllAndWait(stop, enabledCrawlers)
 
 	// 啟動所有爬蟲
-	for _, crawling := range crawlers {
+	for _, crawling := range enabledCrawlers {
 		crawling.Crawler.Start()
 	}
 
@@ -38,7 +56,7 @@ func StartCrawling(tick *time.Ticker, ctx context.Context, stop chan<- struct{})
 			if !ok {
 				return
 			}
-			for _, crawling := range crawlers {
+			for _, crawling := range enabledCrawlers {
 				publisher := getPublisherFunc(cli, crawling)
 				go crawlEach(cli, crawling, publisher)
 			}
@@ -195,7 +213,7 @@ func stopCrawler(crawling *Crawling, wg *sync.WaitGroup) {
 	wg.Done()
 }
 
-func stopAllAndWait(stop chan<- struct{}) {
+func stopAllAndWait(stop chan<- struct{}, crawlers map[string]*Crawling) {
 
 	gp := &sync.WaitGroup{}
 

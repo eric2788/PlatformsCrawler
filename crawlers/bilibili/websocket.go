@@ -39,7 +39,7 @@ func startWebSocket(ctx context.Context, wg *sync.WaitGroup) {
 	})
 
 	wg.Add(1)
-	onReceiveMessage(ctx, con, wg)
+	go onReceiveMessage(ctx, con, wg)
 }
 
 func onReceiveMessage(ctx context.Context, conn *websocket.Conn, wg *sync.WaitGroup) {
@@ -87,7 +87,7 @@ func testReadMessageWithRandomError(conn *websocket.Conn) (messageType int, p []
 func retryDelay(ctx context.Context, wg *sync.WaitGroup) {
 	logger.Warnf("五秒後重連...")
 	<-time.After(time.Second * 5)
-	go startWebSocket(ctx, wg)
+	startWebSocket(ctx, wg)
 	if listening != nil {
 		// 重新訂閱
 		for _, err := doSubscribeRequest(listening); err != nil; _, err = doSubscribeRequest(listening) {

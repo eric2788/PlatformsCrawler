@@ -10,7 +10,11 @@ import (
 
 const channelNameKey = "youtube:channelNames"
 
-var statusMap = &sync.Map{}
+var (
+	statusMap      = &sync.Map{}
+	lastLiveMap    = &sync.Map{}
+	lastPendingMap = &sync.Map{}
+)
 
 type (
 	LiveStatus string
@@ -89,8 +93,27 @@ func runYoutubeSpider(ctx context.Context, channelId string, wg *sync.WaitGroup,
 					continue
 				}
 			}
-
 			statusMap.Store(channelId, status)
+
+			if status.Type == Live {
+				// 上一次直播的 video id 跟本次相同
+				if lastId, ok := lastLiveMap.Load(channelId); ok {
+					if lastId.(string) == status.Id {
+						continue
+					}
+				}
+				lastLiveMap.Store(channelId, status.Id)
+			}
+
+			if status.Type == UpComing {
+				// 上一次預告的 video id 跟本次相同
+				if lastId, ok := lastPendingMap.Load(channelId); ok {
+					if lastId.(string) == status.Id {
+						continue
+					}
+				}
+				lastPendingMap.Store(channelId, status.Id)
+			}
 			go handleBroadcast(channelId, status, publisher)
 		}
 	}

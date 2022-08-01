@@ -101,6 +101,8 @@ func doSubscribeRequest(room []string) (url.URL, error) {
 
 	resp, err := http.DefaultClient.Do(req)
 
+	defer resp.Body.Close()
+
 	if err != nil {
 		return httpUrl, err
 	}
@@ -150,7 +152,9 @@ func unSubscribe(httpUrl url.URL) {
 		logger.Errorf("請求刪除先前的訂閱時出現錯誤: %v", err)
 	}
 
-	_, err = http.DefaultClient.Do(req)
+	resp, err := http.DefaultClient.Do(req)
+
+	defer resp.Body.Close()
 
 	if err != nil {
 		logger.Errorf("刪除先前的訂閱時出現錯誤: %v", err)

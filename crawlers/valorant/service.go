@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/corpix/uarand"
 	"github.com/eric2788/common-utils/request"
+	"io"
 	"net/http"
 	"strings"
 )
@@ -56,14 +57,19 @@ func getValorantMatches(name, tag string) ([]MatchData, error) {
 	req.Header.Set("Authorization", valorantYaml.HenrikApiKey)
 
 	resp, err := http.DefaultClient.Do(req)
+	defer resp.Body.Close()
+
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	var matchesResp MatchesResp
 	err = json.NewDecoder(resp.Body).Decode(&matchesResp)
 	if err != nil {
+		logger.Errorf("error while parsing valorant matches response: %s", err)
+		if b, err := io.ReadAll(resp.Body); err == nil {
+			logger.Errorf("response body: %s", string(b))
+		}
 		return nil, err
 	} else if len(matchesResp.Errors) > 0 {
 		var apiErrors = make([]string, len(matchesResp.Errors))

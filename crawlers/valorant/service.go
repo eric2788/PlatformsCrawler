@@ -41,6 +41,11 @@ type (
 		Region           string `json:"region"`
 		Cluster          string `json:"cluster"`
 	}
+
+	MatchMetaDataPublish struct {
+		Data        *MatchMetaData `json:"data"`
+		DisplayName string         `json:"display_name"`
+	}
 )
 
 func getValorantMatches(name, tag string) ([]MatchData, error) {

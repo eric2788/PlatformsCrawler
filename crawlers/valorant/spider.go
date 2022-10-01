@@ -53,7 +53,12 @@ func runValorantMatchTrack(ctx context.Context, name, tag string, wg *sync.WaitG
 				continue
 			}
 
-			publish(displayName, latestData)
+			publishData := &MatchMetaDataPublish{
+				Data:        &latestData,
+				DisplayName: fmt.Sprintf("%s#%s", name, tag),
+			}
+
+			publish(displayName, publishData)
 		}
 	}
 

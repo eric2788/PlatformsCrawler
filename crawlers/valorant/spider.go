@@ -40,15 +40,16 @@ func runValorantMatchTrack(ctx context.Context, name, tag string, wg *sync.WaitG
 			latestData := matches[0].MetaData
 			logger.Debugf("玩家 %s 的最新對戰資料ID為 %v, 時間: %s", displayName, latestData.MatchId, datetime.FormatSeconds(latestData.GameStart))
 
-			// 與上一次的狀態相同
 			lastMatchId, ok := lastMatchMap.Load(displayName)
 
+			// 與上一次的狀態相同 => 忽略
 			if ok && lastMatchId == latestData.MatchId {
 				continue
 			}
 
 			lastMatchMap.Store(displayName, latestData.MatchId)
 
+			// 尚未有上一次檢測的資料 + 最新對戰記錄距今已超過24小時 => 忽略
 			if !ok && datetime.Duration(latestData.GameStart, time.Now().Unix()).Hours() > 24 {
 				continue
 			}

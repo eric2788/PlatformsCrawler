@@ -44,7 +44,7 @@ type (
 )
 
 func getValorantMatches(name, tag string) ([]MatchData, error) {
-	url := fmt.Sprintf("https://api.henrikdev.xyz/valorant/v3/matches/ap/%s/%s", name, tag)
+	url := fmt.Sprintf("https://api.henrikdev.xyz/valorant/v3/matches/%s/%s/%s", valorantYaml.Region, name, tag)
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 
 	req.Header.Set("User-Agent", uarand.GetRandom())

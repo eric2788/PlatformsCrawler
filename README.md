@@ -15,6 +15,8 @@
 ### Bilibili
 - 所有直播數據流 (with [biligo-live-ws](https://github.com/eric2788/biligo-live-ws))
 
+### Valorant
+- 玩家的最新對戰資料追蹤
 
 ## 原理
 

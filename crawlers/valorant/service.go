@@ -11,16 +11,32 @@ import (
 )
 
 type (
-	MatchesResp struct {
-		Status int         `json:"status"`
-		Data   []MatchData `json:"data"`
-		Errors []Error     `json:"errors"`
+	BaseResp struct {
+		Status int     `json:"status"`
+		Errors []Error `json:"errors"`
 	}
 
 	Error struct {
 		Message string `json:"message"`
 		Code    int    `json:"code"`
 		Details string `json:"details"`
+	}
+
+	MatchesResp struct {
+		BaseResp
+		Data []MatchData `json:"data"`
+	}
+
+	AccountResp struct {
+		BaseResp
+		Data AccountDetails `json:"data"`
+	}
+
+	AccountDetails struct {
+		PUuid  string `json:"puuid"`
+		Region string `json:"region"`
+		Name   string `json:"name"`
+		Tag    string `json:"tag"`
 	}
 
 	MatchData struct {
@@ -49,20 +65,25 @@ type (
 	}
 )
 
-func getValorantMatches(name, tag string) ([]MatchData, error) {
-	url := fmt.Sprintf("https://api.henrikdev.xyz/valorant/v3/matches/%s/%s/%s", valorantYaml.Region, name, tag)
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+const BaseUrl = "https://api.henrikdev.xyz/valorant"
 
-	req.Header.Set("User-Agent", uarand.GetRandom())
-	req.Header.Set("Authorization", valorantYaml.HenrikApiKey)
-
-	resp, err := http.DefaultClient.Do(req)
-	defer resp.Body.Close()
-
+func doRequest(path string) (*http.Response, error) {
+	req, err := http.NewRequest(http.MethodGet, BaseUrl+path, nil)
 	if err != nil {
 		return nil, err
 	}
+	req.Header.Set("User-Agent", uarand.GetRandom())
+	req.Header.Set("Authorization", valorantYaml.HenrikApiKey)
+	return http.DefaultClient.Do(req)
+}
 
+func getValorantMatches(uuid string) ([]MatchData, error) {
+	path := fmt.Sprintf("/v3/by-puuid/matches/%s/%s", valorantYaml.Region, uuid)
+	resp, err := doRequest(path)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
 	var matchesResp MatchesResp
 	err = json.NewDecoder(resp.Body).Decode(&matchesResp)
 	if err != nil {
@@ -85,5 +106,33 @@ func getValorantMatches(name, tag string) ([]MatchData, error) {
 		}
 	} else {
 		return matchesResp.Data, nil
+	}
+}
+
+func getDisplayName(uuid string) (*AccountDetails, error) {
+	path := fmt.Sprintf("/v1/by-puuid/account/%s", uuid)
+	resp, err := doRequest(path)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	var accountResp AccountResp
+	err = json.NewDecoder(resp.Body).Decode(&accountResp)
+	if err != nil {
+		return nil, err
+	} else if len(accountResp.Errors) > 0 {
+		var apiErrors = make([]string, len(accountResp.Errors))
+		for i, apiError := range accountResp.Errors {
+			apiErrors[i] = fmt.Sprintf("(%d)%s", apiError.Code, apiError.Message)
+		}
+		return nil, fmt.Errorf("api errors: %s", strings.Join(apiErrors, ", "))
+	} else if resp.StatusCode != 200 {
+		return nil, &request.HttpError{
+			Code:     resp.StatusCode,
+			Status:   resp.Status,
+			Response: resp,
+		}
+	} else {
+		return &accountResp.Data, nil
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"time"
 )
 
 var (
@@ -44,6 +45,32 @@ func SaveMap(key string, dict interface{}) error {
 	return DoRedis(func(cli *redis.Client) error {
 		return cli.HSet(ctx, key, dict).Err()
 	})
+}
+
+func GetString(key string) (string, error) {
+	if cli == nil {
+		return "", fmt.Errorf("redis client does not initalized")
+	}
+	s, err := cli.Get(ctx, key).Result()
+	if err == redis.Nil {
+		return "", nil
+	} else {
+		return s, err
+	}
+}
+
+func SetString(key, value string) error {
+	if cli == nil {
+		return fmt.Errorf("redis client does not initalized")
+	}
+	return cli.Set(ctx, key, value, 0).Err()
+}
+
+func SetStringTemp(key, value string, duration time.Duration) error {
+	if cli == nil {
+		return fmt.Errorf("redis client does not initalized")
+	}
+	return cli.Set(ctx, key, value, duration).Err()
 }
 
 func GetAllMap(key string, dict *map[string]string) error {

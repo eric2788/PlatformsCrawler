@@ -5,7 +5,7 @@ import (
 	"github.com/eric2788/PlatformsCrawler/crawling"
 	"github.com/eric2788/PlatformsCrawler/file"
 	"github.com/eric2788/PlatformsCrawler/logging"
-	"strings"
+	"github.com/google/uuid"
 	"sync"
 )
 
@@ -19,11 +19,9 @@ var (
 type crawler struct {
 }
 
-func (c *crawler) Listen(room string, publish crawling.Publisher, wg *sync.WaitGroup) context.CancelFunc {
-	parts := strings.Split(room, "#")
-	name, tag := parts[0], parts[1]
+func (c *crawler) Listen(uuid string, publish crawling.Publisher, wg *sync.WaitGroup) context.CancelFunc {
 	ctx, cancel := context.WithCancel(context.Background())
-	go runValorantMatchTrack(ctx, name, tag, wg, publish)
+	go runValorantMatchTrack(ctx, uuid, wg, publish)
 	return cancel
 }
 
@@ -32,7 +30,8 @@ func (c *crawler) Prefix() string {
 }
 
 func (c *crawler) IsValidTopic(topic string) bool {
-	return len(strings.Split(topic, "#")) == 2
+	_, err := uuid.Parse(topic)
+	return err == nil
 }
 
 func (c *crawler) Init() {

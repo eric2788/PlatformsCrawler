@@ -56,7 +56,7 @@ func getDisplayNameByUuid(uuid string) (string, bool) {
 		return "", false
 	} else {
 		displayName = fmt.Sprintf("%s#%s", account.Name, account.Tag)
-		err = crawling.SetStringTemp(key, displayName, time.Hour*72)
+		err = crawling.SetStringTemp(key, displayName, time.Hour*24*20)
 		if err != nil {
 			logger.Errorf("嘗試保存玩家 %s 的顯示名稱大到redis時出現錯誤: %v", uuid, err)
 		}
@@ -115,6 +115,8 @@ func runValorantMatchTrack(ctx context.Context, uuid string, wg *sync.WaitGroup,
 			if !latestSuccess {
 				latestDisplayName = displayName
 			}
+
+			logger.Infof("玩家 %s 的最新對戰訊息已更新。最新時間為: %s", latestDisplayName, datetime.FormatSeconds(latestData.GameStart))
 
 			publishData := &MatchMetaDataPublish{
 				Data:        &latestData,

@@ -3,11 +3,12 @@ package valorant
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/corpix/uarand"
-	"github.com/eric2788/common-utils/request"
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/corpix/uarand"
+	"github.com/eric2788/common-utils/request"
 )
 
 type (
@@ -89,9 +90,9 @@ func getValorantMatches(uuid string) ([]MatchData, error) {
 	if err != nil {
 		logger.Errorf("error while parsing valorant matches response: %s", err)
 		if b, err := io.ReadAll(resp.Body); err == nil {
-			logger.Errorf("response body: %s", string(b))
+			logger.Errorf("response body: %q", string(b))
 		}
-		return nil, err
+		return nil, fmt.Errorf("%d: %s", resp.StatusCode, resp.Status)
 	} else if len(matchesResp.Errors) > 0 {
 		var apiErrors = make([]string, len(matchesResp.Errors))
 		for i, apiError := range matchesResp.Errors {
@@ -119,7 +120,11 @@ func getDisplayName(uuid string) (*AccountDetails, error) {
 	var accountResp AccountResp
 	err = json.NewDecoder(resp.Body).Decode(&accountResp)
 	if err != nil {
-		return nil, err
+		logger.Errorf("error while parsing valorant matches response: %s", err)
+		if b, err := io.ReadAll(resp.Body); err == nil {
+			logger.Errorf("response body: %q", string(b))
+		}
+		return nil, fmt.Errorf("%d: %s", resp.StatusCode, resp.Status)
 	} else if len(accountResp.Errors) > 0 {
 		var apiErrors = make([]string, len(accountResp.Errors))
 		for i, apiError := range accountResp.Errors {

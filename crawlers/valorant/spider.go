@@ -99,6 +99,9 @@ func runValorantMatchTrack(ctx context.Context, uuid string, wg *sync.WaitGroup,
 			// 與上一次的狀態相同 => 忽略
 			if ok && lastMatchId == latestData.MatchId {
 				continue
+			} else if latestData.MatchId == "" || len(latestData.MatchId) == 0 { // 對戰ID為空白
+				logger.Warnf("玩家 %s 的對戰記錄ID為空(%q)，已略過。", latestData.MatchId, displayName)
+				continue
 			}
 
 			saveLatestMatch(uuid, latestData.MatchId)

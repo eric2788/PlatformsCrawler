@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	mapset "github.com/deckarep/golang-set"
-	"github.com/eric2788/PlatformsCrawler/crawling"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	mapset "github.com/deckarep/golang-set"
+	"github.com/eric2788/PlatformsCrawler/crawling"
 )
 
 const id = "platforms_crawler"
@@ -57,14 +58,14 @@ func handleMessage(b []byte) {
 
 			publisher(fmt.Sprintf("%d", int64(roomId)), b)
 		} else {
-			logger.Debugf("推送方式為 null，已略過")
+			logger.Debugf("推送方式為 null, 已略過")
 		}
 
 		// 僅作為 logging
 		if data["command"] == "LIVE" {
 			logger.Infof("檢測到 %s(%d) 在 B站 開播了。", info["name"], int64(roomId))
-		} else {
-			logger.Debugf("Received %s command from room %d", data["command"], int64(roomId))
+		} else if data["command"] == "HEARTBEAT_REPLY" {
+			logger.Debugf("成功接收來自房間 %s 的 HEARTBEAT_REPLY", int64(roomId))
 		}
 	} else {
 		logger.Warnf("未知的房間 %+v", data["live_info"])
@@ -100,6 +101,10 @@ func doSubscribeRequest(room []string) (url.URL, error) {
 	req.Header.Set("Authorization", id)
 
 	resp, err := http.DefaultClient.Do(req)
+
+	if err != nil {
+		return httpUrl, err
+	}
 
 	defer resp.Body.Close()
 

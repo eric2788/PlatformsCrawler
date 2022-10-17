@@ -16,8 +16,8 @@ type ApiConfig struct {
 
 var youtubeYaml = &Configuration{
 	Interval:        60,
-	UpComingKeyword: "\"isUpcoming\":true",
-	LiveKeyword:     "<link rel=\"canonical\" href=\"https://www.youtube.com/watch\\?v=(?P<id>\\w+)\">",
+	UpComingKeyword: `"isUpcoming":true`,
+	LiveKeyword:     `<link rel="canonical" href="https://www.youtube.com/watch\?v=(?P<id>\w+)">`,
 	Api: &ApiConfig{
 		Region:   "SG",
 		Language: "zh-TW",

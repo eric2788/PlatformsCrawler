@@ -2,10 +2,12 @@ package youtube
 
 import (
 	"fmt"
-	"github.com/eric2788/common-utils/regex"
-	"github.com/eric2788/common-utils/request"
+	"io"
 	"net/http"
 	"regexp"
+
+	"github.com/corpix/uarand"
+	"github.com/eric2788/common-utils/regex"
 )
 
 var (
@@ -25,7 +27,15 @@ type ChannelStatus struct {
 
 func GetChannelStatus(channelId string) (*ChannelStatus, error) {
 
-	res, err := http.Get(fmt.Sprintf("https://youtube.com/channel/%s/live", channelId))
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://youtube.com/channel/%s/live", channelId), nil)
+
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("User-Agent", uarand.GetRandom())
+
+	res, err := http.DefaultClient.Do(req)
 
 	if err != nil {
 		return nil, err
@@ -35,22 +45,24 @@ func GetChannelStatus(channelId string) (*ChannelStatus, error) {
 
 	defer res.Body.Close()
 
-	contents, err := request.ReadForRegex(res, idRegex, upcomingRegex)
+	content, err := io.ReadAll(res.Body)
 
 	if err != nil {
 		return nil, err
 	}
 
-	if contents[0] == "" {
+	isUpcoming, hasConical := upcomingRegex.Match(content), idRegex.Match(content)
+
+	if !hasConical {
 		return &ChannelStatus{Type: None}, nil // no streaming or upcoming
 	} else {
 
-		find := regex.GetParams(idRegex, contents[0])
+		find := regex.GetParams(idRegex, string(content))
 		videoId := find["id"]
 
 		status := &ChannelStatus{Id: videoId}
 
-		if contents[1] != "" {
+		if isUpcoming {
 			status.Type = UpComing
 		} else {
 			status.Type = Live

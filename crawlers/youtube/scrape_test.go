@@ -106,6 +106,37 @@ func TestGetChannelLiveResponse(t *testing.T) {
 	}
 }
 
+func TestGetOneChannelStatus(t *testing.T) {
+	logrus.SetLevel(logrus.DebugLevel)
+	// load youtube yaml
+	file.LoadYaml("youtube", youtubeYaml)
+	initKeywordRegexp()
+
+	name := "music"
+	id := channels[name]
+
+	for i := 0; i < 5; i++ {
+		status, err := getChannelStatusDebug(id, i)
+
+		if err != nil {
+			t.Fatalf("GetChannelStatus Error: %v", err)
+		} else {
+			if b, err := json.MarshalIndent(status, "", "\t"); err != nil {
+				t.Fatalf("Json Marshal Error: %v", err)
+			} else {
+				fmt.Printf("%s 的直播狀態 \n", name)
+				fmt.Println(string(b))
+
+				if status.Id != "" && youtubeYaml.Api.Key != "" {
+					if err = showVideoContent(status.Id); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+		}
+	}
+}
+
 func TestGetChannelStatus(t *testing.T) {
 
 	logrus.SetLevel(logrus.DebugLevel)

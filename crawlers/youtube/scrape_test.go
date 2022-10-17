@@ -3,10 +3,17 @@ package youtube
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/eric2788/common-utils/request"
+	"io"
 	"net/http"
+	"os"
 	"regexp"
+	"strings"
 	"testing"
+
+	"github.com/eric2788/PlatformsCrawler/file"
+	"github.com/eric2788/common-utils/regex"
+	"github.com/eric2788/common-utils/request"
+	"github.com/sirupsen/logrus"
 )
 
 var channels = map[string]string{
@@ -19,10 +26,92 @@ var channels = map[string]string{
 	"nano":       "UC0lIq8G4LgDPlXsDmYSUExw",
 }
 
+// TestGetChannelLiveResponse try to use with ytInitialData, referenced by Sora233/DDBOT
+func TestGetChannelLiveResponse(t *testing.T) {
+
+	if err := os.Mkdir("result", 0775); err != nil && !os.IsExist(err) {
+		t.Fatal(err)
+	}
+
+	for name, channel := range channels {
+
+		func(name, channelId string) {
+			req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://youtube.com/channel/%s/live", channelId), nil)
+
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			req.Header.Set("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36")
+
+			res, err := http.DefaultClient.Do(req)
+
+			if err != nil {
+				t.Fatal(err)
+			} else if res.StatusCode == 404 {
+				t.Fatal(err)
+			}
+
+			defer res.Body.Close()
+
+			content, err := io.ReadAll(res.Body)
+
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if f, err := os.Create(fmt.Sprintf("result/%s_%s.html", name, channelId)); err == nil {
+				f.Write(content)
+				f.Close()
+			} else {
+				t.Fatal(err)
+			}
+
+			var reg *regexp.Regexp
+			if strings.Contains(string(content), `window["ytInitialData"]`) {
+				reg = regexp.MustCompile("window\\[\"ytInitialData\"\\] = (?P<json>.*);")
+			} else {
+				reg = regexp.MustCompile(">var ytInitialData = (?P<json>.*?);</script>")
+			}
+
+			result := regex.GetParams(reg, string(content))
+
+			if jsonStr, ok := result["json"]; !ok {
+				t.Log("cannot find ytInitialData")
+			} else {
+
+				var jsonObj = make(map[string]interface{})
+				if err := json.Unmarshal([]byte(jsonStr), &jsonObj); err != nil {
+					t.Log(err)
+				}
+
+				if b, err := json.MarshalIndent(jsonObj, "", "  "); err == nil {
+
+					f, err := os.Create(fmt.Sprintf("result/%s_%s.json", name, channelId))
+
+					if err != nil {
+						t.Log(err)
+					}
+
+					f.Write(b)
+
+					f.Close()
+
+				} else {
+					t.Log(err)
+				}
+			}
+
+		}(name, channel)
+	}
+}
+
 func TestGetChannelStatus(t *testing.T) {
 
+	logrus.SetLevel(logrus.DebugLevel)
+
 	// load youtube yaml
-	instance.Init()
+	file.LoadYaml("youtube", youtubeYaml)
 
 	initKeywordRegexp()
 
@@ -31,15 +120,15 @@ func TestGetChannelStatus(t *testing.T) {
 		status, err := GetChannelStatus(id)
 
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("GetChannelStatus Error: %v", err)
 		} else {
 			if b, err := json.MarshalIndent(status, "", "\t"); err != nil {
-				t.Fatal(err)
+				t.Fatalf("Json Marshal Error: %v", err)
 			} else {
 				fmt.Printf("%s 的直播狀態 \n", name)
 				fmt.Println(string(b))
 
-				if status.Id != "" {
+				if status.Id != "" && youtubeYaml.Api.Key != "" {
 					if err = showVideoContent(status.Id); err != nil {
 						t.Fatal(err)
 					}

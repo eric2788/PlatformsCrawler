@@ -1,19 +1,20 @@
 package crawling
 
 import (
+	"bytes"
+	"encoding/gob"
 	"fmt"
+	"reflect"
+	"strings"
+	"time"
+
 	mapset "github.com/deckarep/golang-set"
 	"github.com/eric2788/PlatformsCrawler/file"
 	"github.com/go-redis/redis/v8"
-	"reflect"
-	"strings"
-	"sync"
-	"time"
 )
 
 var (
 	cli      *redis.Client
-	mu       = &sync.Mutex{}
 	notFound = mapset.NewSet()
 )
 
@@ -33,8 +34,6 @@ func DoRedis(do func(client *redis.Client) error) error {
 	if cli == nil {
 		return fmt.Errorf("redis client does not initalized")
 	}
-	mu.Lock()
-	defer mu.Unlock()
 	return do(cli)
 }
 
@@ -42,9 +41,31 @@ func SaveMap(key string, dict interface{}) error {
 	if reflect.TypeOf(dict).Kind() != reflect.Map {
 		return fmt.Errorf("the dict value should be a map")
 	}
-	return DoRedis(func(cli *redis.Client) error {
-		return cli.HSet(ctx, key, dict).Err()
-	})
+	return cli.HSet(ctx, key, dict).Err()
+}
+
+func Store(key string, arg interface{}) error {
+	var buffer bytes.Buffer
+	enc := gob.NewEncoder(&buffer)
+	err := enc.Encode(arg)
+	if err != nil {
+		return err
+	}
+	return cli.Set(ctx, key, buffer.Bytes(), time.Duration(0)).Err()
+}
+
+func GetStruct(key string, arg interface{}) (bool, error) {
+	b, err := cli.Get(ctx, key).Bytes()
+	if err != nil {
+		if err == redis.Nil {
+			return false, nil
+		}else{
+			return false, err
+		}
+	}
+	buffer := bytes.NewBuffer(b)
+	dec := gob.NewDecoder(buffer)
+	return true, dec.Decode(arg)
 }
 
 func GetString(key string) (string, error) {

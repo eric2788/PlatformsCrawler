@@ -2,18 +2,19 @@ package youtube
 
 import (
 	"context"
-	"github.com/eric2788/PlatformsCrawler/crawling"
-	"google.golang.org/api/youtube/v3"
 	"sync"
 	"time"
+
+	"github.com/eric2788/PlatformsCrawler/crawling"
+	"google.golang.org/api/youtube/v3"
 )
 
 const channelNameKey = "youtube:channelNames"
 
 var (
-	statusMap      = &sync.Map{}
-	lastLiveMap    = &sync.Map{}
-	lastPendingMap = &sync.Map{}
+	statusMap      = &cache{prefix: "last_status"}
+	lastLiveMap    = &cache{prefix: "last_live"}
+	lastPendingMap = &cache{prefix: "last_pending"}
 )
 
 type (
@@ -61,7 +62,7 @@ func lookupNamesByChannelIds(channelIds []string) (map[string]string, error) {
 
 func runYoutubeSpider(ctx context.Context, channelId string, wg *sync.WaitGroup, publisher crawling.Publisher) {
 
-	statusMap.Store(channelId, &ChannelStatus{Type: None}) // init first state
+	statusMap.setStruct(channelId, &ChannelStatus{Type: None}) // init first state
 	ticker := time.NewTicker(time.Second * time.Duration(youtubeYaml.Interval))
 
 	defer wg.Done()
@@ -87,32 +88,31 @@ func runYoutubeSpider(ctx context.Context, channelId string, wg *sync.WaitGroup,
 			logger.Debugf("%s 的狀態是 %v", channelName, status.Type)
 
 			// 與上一次的狀態相同
-			if lastStatus, ok := statusMap.Load(channelId); ok {
-				last := lastStatus.(*ChannelStatus)
+			if last, ok := statusMap.GetAsLiveStatus(channelId); ok {
 				if last.Id == status.Id && status.Type == last.Type {
 					continue
 				}
 			}
-			statusMap.Store(channelId, status)
+			statusMap.setStruct(channelId, status)
 
 			if status.Type == Live {
 				// 上一次直播的 video id 跟本次相同
-				if lastId, ok := lastLiveMap.Load(channelId); ok {
-					if lastId.(string) == status.Id {
+				if lastId, ok := lastLiveMap.getString(channelId); ok {
+					if lastId == status.Id {
 						continue
 					}
 				}
-				lastLiveMap.Store(channelId, status.Id)
+				lastLiveMap.setString(channelId, status.Id)
 			}
 
 			if status.Type == UpComing {
 				// 上一次預告的 video id 跟本次相同
-				if lastId, ok := lastPendingMap.Load(channelId); ok {
-					if lastId.(string) == status.Id {
+				if lastId, ok := lastPendingMap.getString(channelId); ok {
+					if lastId == status.Id {
 						continue
 					}
 				}
-				lastPendingMap.Store(channelId, status.Id)
+				lastPendingMap.setString(channelId, status.Id)
 			}
 			go handleBroadcast(channelId, status, publisher)
 		}

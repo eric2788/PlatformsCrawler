@@ -23,6 +23,7 @@ type (
 	LiveBroadcast struct {
 		ChannelId   string     `json:"channelId"`
 		ChannelName string     `json:"channelName"`
+		Duplicate   bool       `json:"duplicate"`
 		Status      LiveStatus `json:"status"`
 		Info        *LiveInfo  `json:"info"`
 	}
@@ -93,38 +94,47 @@ func runYoutubeSpider(ctx context.Context, channelId string, wg *sync.WaitGroup,
 					continue
 				}
 			}
-			statusMap.setStruct(channelId, status)
+			if err := statusMap.setStruct(channelId, status); err != nil {
+				logger.Errorf("嘗試儲存 %s 的直播狀態時出現錯誤: %v", channelName, err)
+			}
+
+			duplicate := false
 
 			if status.Type == Live {
 				// 上一次直播的 video id 跟本次相同
 				if lastId, ok := lastLiveMap.getString(channelId); ok {
 					if lastId == status.Id {
-						continue
+						duplicate = true
 					}
 				}
-				lastLiveMap.setString(channelId, status.Id)
+				if err := lastLiveMap.setString(channelId, status.Id); err != nil {
+					logger.Errorf("嘗試儲存 %s 的上一次直播 ID 時出現錯誤: %v", channelName, err)
+				}
 			}
 
 			if status.Type == UpComing {
 				// 上一次預告的 video id 跟本次相同
 				if lastId, ok := lastPendingMap.getString(channelId); ok {
 					if lastId == status.Id {
-						continue
+						duplicate = true
 					}
 				}
-				lastPendingMap.setString(channelId, status.Id)
+				if err := lastPendingMap.setString(channelId, status.Id); err != nil {
+					logger.Errorf("嘗試儲存 %s 的上一次預定直播ID時出現錯誤: %v", channelName, err)
+				}
 			}
-			go handleBroadcast(channelId, status, publisher)
+			go handleBroadcast(channelId, duplicate, status, publisher)
 		}
 	}
 }
 
-func handleBroadcast(channelId string, status *ChannelStatus, publisher crawling.Publisher) {
+func handleBroadcast(channelId string, duplicate bool, status *ChannelStatus, publisher crawling.Publisher) {
 
 	name := instance.getChannelName(channelId)
 
 	broadcast := &LiveBroadcast{
 		Status:      status.Type.ToLiveStatus(),
+		Duplicate:   duplicate,
 		ChannelId:   channelId,
 		ChannelName: name,
 	}
@@ -141,6 +151,10 @@ func handleBroadcast(channelId string, status *ChannelStatus, publisher crawling
 	default:
 		logger.Infof("%s 的油管直播已結束。", name)
 		return
+	}
+
+	if duplicate {
+		logger.Infof("注意： 此次 %s 的狀態為重複狀態。", name)
 	}
 
 	// only upcoming and live can get video

@@ -12,9 +12,9 @@ import (
 const channelNameKey = "youtube:channelNames"
 
 var (
-	statusMap      = &cache{prefix: "last_status"}
-	lastLiveMap    = &cache{prefix: "last_live"}
-	lastPendingMap = &cache{prefix: "last_pending"}
+	statusMap      = newCache("last_status")
+	lastLiveMap    = newCache("last_live")
+	lastPendingMap = newCache("last_pending")
 )
 
 type (

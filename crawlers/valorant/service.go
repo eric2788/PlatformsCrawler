@@ -1,7 +1,6 @@
 package valorant
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -88,18 +87,14 @@ func getValorantMatches(uuid string) ([]MatchData, error) {
 	defer resp.Body.Close()
 	var matchesResp MatchesResp
 
-	var buf bytes.Buffer
-	tee := io.TeeReader(resp.Body, &buf)
-	err = json.NewDecoder(tee).Decode(&matchesResp)
-
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(b, &matchesResp)
 	if err != nil {
 		logger.Errorf("error while parsing valorant matches response: %s", err)
-		if b, err := io.ReadAll(&buf); err == nil {
-			return nil, fmt.Errorf("%d: %s", resp.StatusCode, string(b))
-		} else {
-			logger.Warnf("cannot read response body, use back status text as error")
-			return nil, fmt.Errorf("%d: %s", resp.StatusCode, resp.Status)
-		}
+		return nil, fmt.Errorf("%d: %s", resp.StatusCode, string(b))
 	} else if len(matchesResp.Errors) > 0 {
 		var apiErrors = make([]string, len(matchesResp.Errors))
 		for i, apiError := range matchesResp.Errors {
@@ -125,13 +120,14 @@ func getDisplayName(uuid string) (*AccountDetails, error) {
 	}
 	defer resp.Body.Close()
 	var accountResp AccountResp
-	err = json.NewDecoder(resp.Body).Decode(&accountResp)
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(b, &accountResp)
 	if err != nil {
 		logger.Errorf("error while parsing valorant matches response: %s", err)
-		if b, err := io.ReadAll(resp.Body); err == nil {
-			logger.Errorf("response body: %q", string(b))
-		}
-		return nil, fmt.Errorf("%d: %s", resp.StatusCode, resp.Status)
+		return nil, fmt.Errorf("%d: %s", resp.StatusCode, string(b))
 	} else if len(accountResp.Errors) > 0 {
 		var apiErrors = make([]string, len(accountResp.Errors))
 		for i, apiError := range accountResp.Errors {

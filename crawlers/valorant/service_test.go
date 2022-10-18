@@ -1,6 +1,7 @@
 package valorant
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 
@@ -22,15 +23,16 @@ func TestGetValorantMatchesLoop(t *testing.T) {
 	wg := &sync.WaitGroup{}
 	for i := 0; i < 30; i++ {
 		wg.Add(1)
-		go func(w *sync.WaitGroup){
+		go func(w *sync.WaitGroup, i int) {
 			defer w.Done()
+			fmt.Println("start fetching #", i)
 			_, err := getValorantMatches("f4a508ce-d7c3-561c-9d36-2d6808c18f10")
 			if err != nil {
 				t.Log(err)
 			} else {
 				t.Log("no error")
 			}
-		}(wg)
+		}(wg, i)
 	}
 
 	wg.Wait()

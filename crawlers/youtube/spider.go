@@ -144,10 +144,8 @@ func handleBroadcast(channelId string, duplicate bool, status *ChannelStatus, pu
 	switch status.Type {
 	case UpComing:
 		logger.Infof("%s 在油管有預定直播。", name)
-		break
 	case Live:
 		logger.Infof("%s 正在油管直播。", name)
-		break
 	default:
 		logger.Infof("%s 的油管直播已結束。", name)
 		return
@@ -158,16 +156,14 @@ func handleBroadcast(channelId string, duplicate bool, status *ChannelStatus, pu
 	}
 
 	// only upcoming and live can get video
-	videos, err := getVideos(status.Id)
+	video, err := getVideoWithCache(status.Id, status.Type)
 	if err != nil {
 		logger.Errorf("嘗試獲取油管視頻資訊 %s 時出現錯誤: %v", status.Id, err)
 		return
-	} else if len(videos) == 0 {
+	} else if video == nil {
 		logger.Warnf("找不到 %s 的油管視頻 %s", name, status.Id)
 		return
 	}
-
-	video := videos[0]
 
 	broadcast.Info = &LiveInfo{
 		Cover:       getCover(video.Snippet.Thumbnails),

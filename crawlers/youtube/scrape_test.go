@@ -24,6 +24,7 @@ var channels = map[string]string{
 	"Serena":     "UCRXBTd80F5IIWWY4HatJ5Ug",
 	"music":      "UCcHWhgSsMBemnyLhg6GL1vA",
 	"nano":       "UC0lIq8G4LgDPlXsDmYSUExw",
+	"otto":       "UCvEX2UICvFAa_T6pqizC20g",
 }
 
 // TestGetChannelLiveResponse try to use with ytInitialData, referenced by Sora233/DDBOT
@@ -112,7 +113,7 @@ func TestGetOneChannelStatus(t *testing.T) {
 	file.LoadYaml("youtube", youtubeYaml)
 	initKeywordRegexp()
 
-	name := "music"
+	name := "otto"
 	id := channels[name]
 
 	for i := 0; i < 5; i++ {

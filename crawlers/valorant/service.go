@@ -79,7 +79,7 @@ func doRequest(path string) (*http.Response, error) {
 }
 
 func getValorantMatches(uuid string) ([]MatchData, error) {
-	path := fmt.Sprintf("/v3/by-puuid/matches/%s/%s", valorantYaml.Region, uuid)
+	path := fmt.Sprintf("/v3/by-puuid/matches/%s/%s?size=1", valorantYaml.Region, uuid)
 	resp, err := doRequest(path)
 	if err != nil {
 		return nil, err

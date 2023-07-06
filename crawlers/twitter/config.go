@@ -1,11 +1,11 @@
 package twitter
 
 type Configuration struct {
-	BearerToken       string `yaml:"bearer_token"`
-	ConsumerKey       string `yaml:"consumer_key"`
-	ConsumerSecret    string `yaml:"consumer_secret"`
-	AccessToken       string `yaml:"access_token"`
-	AccessTokenSecret string `yaml:"access_token_secret"`
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
+	ScrapeInterval int `yaml:"scrape_interval"`
 }
 
-var twitterYaml = &Configuration{}
+var twitterYaml = &Configuration{
+	ScrapeInterval: 60,
+}

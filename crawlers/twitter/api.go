@@ -13,7 +13,7 @@ func restApi(group *gin.RouterGroup) {
 
 func checkUserExist(ctx *gin.Context) {
 	screen := ctx.Param("screen")
-	m, err := UserLookUpCache([]string{screen})
+	m, err := GetUserIdWithCache([]string{screen})
 
 	if err != nil {
 		if twErr, ok := err.(twitter.APIError); ok {

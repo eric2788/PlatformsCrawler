@@ -18,7 +18,6 @@ func TestRestful(t *testing.T) {
 
 	file.LoadYaml("twitter", twitterYaml)
 	crawling.InitRedis()
-	startTwitterClient()
 
 	go rest.StartServe(8989)
 

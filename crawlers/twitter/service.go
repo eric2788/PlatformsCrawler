@@ -1,17 +1,18 @@
 package twitter
 
 import (
-	"github.com/dghubble/go-twitter/twitter"
+	"fmt"
+	"strings"
 	"github.com/eric2788/PlatformsCrawler/crawling"
 )
 
 const key = "twitter:user_caches"
 
-func UserLookUpCache(screenNames []string) (map[string]string, error) {
-	return crawling.LoadWithCache(key, UserLookUp, IsNotExistUser, screenNames...)
+func GetUserIdWithCache(screenNames []string) (map[string]string, error) {
+	return crawling.LoadWithCache(key, GetUserId, IsNotExistUser, screenNames...)
 }
 
-func UserLookUp(screenNames []string) (map[string]string, error) {
+func GetUserId(screenNames []string) (map[string]string, error) {
 
 	if len(screenNames) == 0 {
 		return nil, nil
@@ -27,24 +28,28 @@ func UserLookUp(screenNames []string) (map[string]string, error) {
 
 	logger.Debugf("prepare to lookup users: %v", screenNames)
 
-	users, _, err := client.Users.Lookup(&twitter.UserLookupParams{
-		ScreenName:      screenNames,
-		IncludeEntities: twitter.Bool(false),
-	})
+	users := make(map[string]string)
+	errors := make(map[string]error)
 
-	if err != nil {
-		return nil, err
+	for _, user := range screenNames {
+		profile, err := scraper.GetUserIDByScreenName(user)
+		if err != nil {
+			logger.Errorf("error while fetching user id for username %s: %v", user, err)
+			errors[user] = err
+		} else {
+			users[user] = profile
+		}
+	}
+
+	if len(users) == 0 {
+		return nil, fmt.Errorf("%v", errors)
 	}
 
 	userMap := make(map[string]string)
 
-	for _, user := range users {
-		userMap[user.ScreenName] = user.IDStr
-	}
-
 	if len(altScreenNames) > 0 {
 
-		userMapAlt, err := UserLookUpCache(altScreenNames)
+		userMapAlt, err := GetUserIdWithCache(altScreenNames)
 
 		if err != nil {
 			return userMap, err
@@ -58,8 +63,7 @@ func UserLookUp(screenNames []string) (map[string]string, error) {
 	return userMap, nil
 }
 
-// IsNotExistUser 錯誤返回 twitter error code 17 代表 所有 toFetch 結果均為無效
+
 func IsNotExistUser(err error) bool {
-	twErr, ok := err.(twitter.APIError)
-	return ok && twErr.Errors[0].Code == 17
+	return strings.Contains(err.Error(), "does not exist")
 }

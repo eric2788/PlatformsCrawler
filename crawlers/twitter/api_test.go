@@ -31,3 +31,21 @@ func TestRestful(t *testing.T) {
 	assert.Equal(t, "1493253948", resp.Data["id"])
 	assert.Equal(t, "mi_tagun", resp.Data["screen_name"])
 }
+
+func TestGetNickName(t *testing.T) {
+	// crawling.InitRedis()
+
+	err := scraper.LoginOpenAccount()
+
+	if err != nil {
+		t.Skip(err)
+	}
+
+	p, err := scraper.GetProfile("mi_tagun")
+
+	if err != nil {
+		t.Skip(err)
+	}
+
+	t.Logf("%+v", p)
+}

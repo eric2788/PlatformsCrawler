@@ -2,10 +2,12 @@ package twitter
 
 import (
 	"context"
+	"fmt"
+	"sync"
+
 	"github.com/eric2788/PlatformsCrawler/crawling"
 	"github.com/eric2788/PlatformsCrawler/file"
 	"github.com/eric2788/PlatformsCrawler/logging"
-	"sync"
 	twitter "github.com/n0madic/twitter-scraper"
 )
 
@@ -59,4 +61,17 @@ func (c *crawler) Stop(wg *sync.WaitGroup) {
 
 func init() {
 	crawling.RegisterCrawler(Tag, instance, logger)
+	crawling.AddCommandHandler("twitter-login", func(command crawling.CommandSchema) string {
+		if len(command.Args) != 3 {
+			return "參數錯誤，請輸入用戶名、密碼、Code/Email"
+		}
+		args := command.Args
+		username, password, code := args[0], args[1], args[2]
+		err := scraper.Login(username, password, code)
+		if err != nil {
+			return fmt.Sprintf("登入失敗: %v", err)
+		}else {
+			return "登入成功"
+		}
+	})
 }

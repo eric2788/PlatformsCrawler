@@ -6,14 +6,42 @@ import (
 	"github.com/eric2788/PlatformsCrawler/crawling"
 )
 
-const key = "twitter:user_caches"
+const (
+	userIdKey = "twitter:user_caches"
+    nickNameKey = "twitter:username_caches"
+)
 
 func GetUserIdWithCache(screenNames []string) (map[string]string, error) {
-	return crawling.LoadWithCache(key, GetUserId, IsNotExistUser, screenNames...)
+	return crawling.LoadWithCache(userIdKey, GetUserId, IsNotExistUser, screenNames...)
 }
 
 func GetUserId(screenNames []string) (map[string]string, error) {
+	return getStringMultiple(
+		screenNames,
+		scraper.GetUserIDByScreenName,
+		GetUserIdWithCache,
+	)
+}
 
+func GetNickNameWithCache(screenNames []string) (map[string]string, error) {
+	return crawling.LoadWithCache(nickNameKey, GetNickNames, IsNotExistUser, screenNames...)
+}
+
+func GetNickNames(screenNames []string) (map[string]string, error) {
+	return getStringMultiple(
+		screenNames,
+		func(s string) (string, error) {
+			profile, err := scraper.GetProfile(s)
+			if err != nil {
+				return "", err
+			}
+			return profile.Name, nil
+		},
+		GetNickNameWithCache,
+	)
+}
+
+func getStringMultiple(screenNames []string, getter func(string)(string, error), cacheGetter func([]string)(map[string]string, error)) (map[string]string, error) {
 	if len(screenNames) == 0 {
 		return nil, nil
 	}
@@ -32,7 +60,7 @@ func GetUserId(screenNames []string) (map[string]string, error) {
 	errors := make(map[string]error)
 
 	for _, user := range screenNames {
-		profile, err := scraper.GetUserIDByScreenName(user)
+		profile, err := getter(user)
 		if err != nil {
 			logger.Errorf("error while fetching user id for username %s: %v", user, err)
 			errors[user] = err
@@ -49,7 +77,7 @@ func GetUserId(screenNames []string) (map[string]string, error) {
 
 	if len(altScreenNames) > 0 {
 
-		userMapAlt, err := GetUserIdWithCache(altScreenNames)
+		userMapAlt, err := cacheGetter(altScreenNames)
 
 		if err != nil {
 			return userMap, err
@@ -62,7 +90,6 @@ func GetUserId(screenNames []string) (map[string]string, error) {
 
 	return userMap, nil
 }
-
 
 func IsNotExistUser(err error) bool {
 	return strings.Contains(err.Error(), "does not exist")

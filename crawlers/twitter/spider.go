@@ -2,12 +2,21 @@ package twitter
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/eric2788/PlatformsCrawler/crawling"
+	twitterscraper "github.com/n0madic/twitter-scraper"
 )
 
+var lastTweetIdCache = crawling.NewCache("twitter", "last_tweet_id")
+
+
+type TweetContent struct {
+	Tweet *twitterscraper.TweetResult `json:"tweet"`
+	NickName string `json:"nick_name"`
+}
 
 func listenUserTweets(ctx context.Context, username string, wg *sync.WaitGroup, publisher crawling.Publisher){
 	
@@ -34,7 +43,59 @@ func listenUserTweets(ctx context.Context, username string, wg *sync.WaitGroup, 
 				logger.Errorf("刷取用戶 %s 推文內容時出現錯誤 %v", username, lastTweet.Error)
 				continue
 			}
-			go publisher(username, lastTweet)
+
+			lastTweetIdFromCache, exist := lastTweetIdCache.GetString(username)
+
+			if exist && lastTweetIdFromCache == lastTweet.ID {
+				logger.Debugf("最新推文ID與上次發布的推文ID相同，已跳過。")
+				continue
+			}
+
+			lastTweetIdCache.SetString(username, lastTweet.ID)
+
+			nickName, exist := getDisplayNameByScreen(username)
+			if !exist {
+				nickName = username
+			}
+
+			logger.Infof("%s 發佈了一則新推文: %v", nickName, lastTweet.Name)
+			
+			go publisher(username, &TweetContent{
+				Tweet: lastTweet,
+				NickName: nickName,
+			})
 		}
+	}
+}
+
+
+func getDisplayNameByScreen(screen string) (string, bool) {
+	key := fmt.Sprintf("twitter:display_name:%s", screen)
+	displayName, err := crawling.GetString(key)
+
+	// redis 快取找到
+	if displayName != "" && err == nil {
+		return displayName, true
+	}
+
+	if err != nil {
+		logger.Errorf("嘗試獲取玩家 %s 的顯示名稱時出現錯誤: %v", screen, err)
+	} else if displayName == "" {
+		logger.Warnf("玩家 %s 的顯示名稱不在快取中或已過期。", screen)
+	}
+
+	logger.Warnf("將使用 API 請求獲取 %s 的 顯示名稱。", screen)
+
+	account, err := scraper.GetProfile(screen)
+	if err != nil {
+		logger.Errorf("嘗試獲取玩家 %s 的顯示名稱時出現錯誤: %v", screen, err)
+		return "", false
+	} else {
+		displayName = account.Name
+		err = crawling.SetStringTemp(key, displayName, time.Hour*24*30)
+		if err != nil {
+			logger.Errorf("嘗試保存玩家 %s 的顯示名稱大到redis時出現錯誤: %v", screen, err)
+		}
+		return displayName, true
 	}
 }

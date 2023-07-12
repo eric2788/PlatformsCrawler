@@ -63,7 +63,7 @@ func lookupNamesByChannelIds(channelIds []string) (map[string]string, error) {
 
 func runYoutubeSpider(ctx context.Context, channelId string, wg *sync.WaitGroup, publisher crawling.Publisher) {
 
-	statusMap.setStruct(channelId, &ChannelStatus{Type: None}) // init first state
+	statusMap.SetStruct(channelId, &ChannelStatus{Type: None}) // init first state
 	ticker := time.NewTicker(time.Second * time.Duration(youtubeYaml.Interval))
 
 	defer wg.Done()
@@ -94,7 +94,7 @@ func runYoutubeSpider(ctx context.Context, channelId string, wg *sync.WaitGroup,
 					continue
 				}
 			}
-			if err := statusMap.setStruct(channelId, status); err != nil {
+			if err := statusMap.SetStruct(channelId, status); err != nil {
 				logger.Errorf("嘗試儲存 %s 的直播狀態時出現錯誤: %v", channelName, err)
 			}
 
@@ -102,24 +102,24 @@ func runYoutubeSpider(ctx context.Context, channelId string, wg *sync.WaitGroup,
 
 			if status.Type == Live {
 				// 上一次直播的 video id 跟本次相同
-				if lastId, ok := lastLiveMap.getString(channelId); ok {
+				if lastId, ok := lastLiveMap.GetString(channelId); ok {
 					if lastId == status.Id {
 						duplicate = true
 					}
 				}
-				if err := lastLiveMap.setString(channelId, status.Id); err != nil {
+				if err := lastLiveMap.SetString(channelId, status.Id); err != nil {
 					logger.Errorf("嘗試儲存 %s 的上一次直播 ID 時出現錯誤: %v", channelName, err)
 				}
 			}
 
 			if status.Type == UpComing {
 				// 上一次預告的 video id 跟本次相同
-				if lastId, ok := lastPendingMap.getString(channelId); ok {
+				if lastId, ok := lastPendingMap.GetString(channelId); ok {
 					if lastId == status.Id {
 						duplicate = true
 					}
 				}
-				if err := lastPendingMap.setString(channelId, status.Id); err != nil {
+				if err := lastPendingMap.SetString(channelId, status.Id); err != nil {
 					logger.Errorf("嘗試儲存 %s 的上一次預定直播ID時出現錯誤: %v", channelName, err)
 				}
 			}

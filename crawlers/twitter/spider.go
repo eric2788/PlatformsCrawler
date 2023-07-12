@@ -55,12 +55,18 @@ func listenUserTweets(ctx context.Context, username string, wg *sync.WaitGroup, 
 			lastTweetIdCache.SetString(username, lastTweet.ID)
 
 			profile, _ := getProfileByScreen(username)
-			nickName, exist := getDisplayNameByScreen(username)
-			if !exist {
-				nickName = username
+			nickName := lastTweet.Name
+			if nickName == "" {
+				logger.Warnf("找不到用戶 %s 的顯示名稱, 將採用API請求", username)
+				nick, exist := getDisplayNameByScreen(username)
+				if !exist {
+					logger.Warnf("找不到用戶 %s 的顯示名稱, 將用回 username", username)
+					nick = username
+				}
+				nickName = nick
 			}
 
-			logger.Infof("%s 發佈了一則新推文: %v", nickName, lastTweet.Name)
+			logger.Infof("%s 發佈了一則新推文", nickName)
 			
 			go publisher(username, &TweetContent{
 				Tweet: lastTweet,

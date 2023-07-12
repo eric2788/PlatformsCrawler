@@ -3,14 +3,18 @@ package twitter
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
+	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/eric2788/PlatformsCrawler/crawling"
 	twitterscraper "github.com/n0madic/twitter-scraper"
 )
 
 var lastTweetIdCache = crawling.NewCache("twitter", "last_tweet_id")
+
+var excepted = mapset.NewSet[string]()
 
 
 type TweetContent struct {
@@ -34,6 +38,12 @@ func listenUserTweets(ctx context.Context, username string, wg *sync.WaitGroup, 
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+
+			if excepted.Contains(username) {
+				logger.Debugf("用戶 %s 已被列入例外，已跳過。", username)
+				return
+			}
+
 			tweetsChan := scraper.GetTweets(ctx, username, 1)
 			lastTweet, ok := <-tweetsChan 
 			if !ok {
@@ -42,6 +52,11 @@ func listenUserTweets(ctx context.Context, username string, wg *sync.WaitGroup, 
 			}
 			if lastTweet.Error != nil {
 				logger.Errorf("刷取用戶 %s 推文內容時出現錯誤 %v", username, lastTweet.Error)
+				if strings.Contains(lastTweet.Error.Error(), "Not authorized to view") {
+					logger.Warnf("用戶 %s 的推文不可見，將停止監控。", username)
+					excepted.Add(username)
+					return
+				}
 				continue
 			}
 

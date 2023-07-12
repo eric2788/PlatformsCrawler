@@ -15,6 +15,7 @@ var lastTweetIdCache = crawling.NewCache("twitter", "last_tweet_id")
 
 type TweetContent struct {
 	Tweet *twitterscraper.TweetResult `json:"tweet"`
+	Profile *twitterscraper.Profile `json:"profile"`
 	NickName string `json:"nick_name"`
 }
 
@@ -53,6 +54,7 @@ func listenUserTweets(ctx context.Context, username string, wg *sync.WaitGroup, 
 
 			lastTweetIdCache.SetString(username, lastTweet.ID)
 
+			profile, _ := getProfileByScreen(username)
 			nickName, exist := getDisplayNameByScreen(username)
 			if !exist {
 				nickName = username
@@ -63,8 +65,41 @@ func listenUserTweets(ctx context.Context, username string, wg *sync.WaitGroup, 
 			go publisher(username, &TweetContent{
 				Tweet: lastTweet,
 				NickName: nickName,
+				Profile: profile,
 			})
 		}
+	}
+}
+
+func getProfileByScreen(screen string) (*twitterscraper.Profile, bool) {
+	key := fmt.Sprintf("twitter:profile:%s", screen)
+	var profile = &twitterscraper.Profile{}
+	exist, err := crawling.GetStruct(key, profile)
+
+	// redis 快取找到
+	if exist && err == nil {
+		return profile, true
+	}
+
+	if err != nil {
+		logger.Errorf("嘗試獲取玩家 %s 的個人檔案時出現錯誤: %v", screen, err)
+	} else if profile == nil || !exist {
+		logger.Warnf("玩家 %s 的個人檔案不在快取中或已過期。", screen)
+	}
+
+	logger.Warnf("將使用 API 請求獲取 %s 的 個人檔案。", screen)
+
+	account, err := scraper.GetProfile(screen)
+	if err != nil {
+		logger.Errorf("嘗試獲取玩家 %s 的個人檔案時出現錯誤: %v", screen, err)
+		return nil, false
+	} else {
+		profile = &account
+		err = crawling.Store(key, profile)
+		if err != nil {
+			logger.Errorf("嘗試保存玩家 %s 的個人檔案到redis時出現錯誤: %v", screen, err)
+		}
+		return profile, true
 	}
 }
 
@@ -86,15 +121,15 @@ func getDisplayNameByScreen(screen string) (string, bool) {
 
 	logger.Warnf("將使用 API 請求獲取 %s 的 顯示名稱。", screen)
 
-	account, err := scraper.GetProfile(screen)
-	if err != nil {
-		logger.Errorf("嘗試獲取玩家 %s 的顯示名稱時出現錯誤: %v", screen, err)
+	account, exist := getProfileByScreen(screen)
+	if !exist {
+		logger.Errorf("嘗試獲取玩家 %s 的顯示名稱時出現錯誤: 檔案不存在", screen)
 		return "", false
 	} else {
 		displayName = account.Name
 		err = crawling.SetStringTemp(key, displayName, time.Hour*24*30)
 		if err != nil {
-			logger.Errorf("嘗試保存玩家 %s 的顯示名稱大到redis時出現錯誤: %v", screen, err)
+			logger.Errorf("嘗試保存玩家 %s 的顯示名稱到redis時出現錯誤: %v", screen, err)
 		}
 		return displayName, true
 	}

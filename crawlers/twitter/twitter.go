@@ -41,7 +41,7 @@ func (c *crawler) Start() {
 		err = scraper.LoginOpenAccount()
 	}
 	if err != nil {
-		logger.Errorf("爬蟲初始化失敗，本爬蟲可能無法正常運作")
+		logger.Errorf("爬蟲初始化失敗，本爬蟲可能無法正常運作: %v", err)
 		return
 	}
 	logger.Infof("Twitter 爬蟲已啟動")

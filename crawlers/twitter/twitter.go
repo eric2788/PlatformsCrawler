@@ -35,7 +35,7 @@ func (c *crawler) Init() {
 }
 
 func (c *crawler) Start() {
-	err := scraper.Login(twitterYaml.Username, twitterYaml.Password)
+	err := scraper.Login(twitterYaml.Username, twitterYaml.Password, twitterYaml.EmailCode)
 	if err != nil {
 		logger.Errorf("使用用戶名 %s 登入推特失敗: %v, 將改用匿名登入", twitterYaml.Username, err)
 		err = scraper.LoginOpenAccount()

@@ -32,6 +32,8 @@ func (c *crawler) IsValidTopic(topic string) bool {
 
 func (c *crawler) Init() {
 	file.LoadYaml("twitter", twitterYaml)
+	scraper.WithReplies(true)
+	scraper.WithDelay(twitterYaml.RequestDelay)
 }
 
 func (c *crawler) Start() {
